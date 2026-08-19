@@ -1,0 +1,15 @@
+data/
+runs/
+results/__pycache__/
+training/__pycache__/
+data_preparation/__pycache__/
+*.pt
+*.pt.tmp
+*.pyc
+*.log
+*.db
+.ipynb_checkpoints/
+wandb/
+__pycache__/
+.vscode/
+environment_pinned.yml
