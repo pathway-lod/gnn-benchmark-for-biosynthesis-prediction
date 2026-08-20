@@ -14,3 +14,7 @@ wandb/
 __pycache__/
 .vscode/
 environment_pinned.yml
+
+# paper draft — kept in Overleaf, not in the public repo
+appendix.tex
+*.tex
