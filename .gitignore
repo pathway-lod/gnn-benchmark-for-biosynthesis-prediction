@@ -1,4 +1,5 @@
-data/
+data/*
+!data/README.md
 runs/
 results/__pycache__/
 training/__pycache__/
