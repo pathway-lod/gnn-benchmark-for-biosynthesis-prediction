@@ -22,7 +22,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-RUNS_DIR = Path(__file__).parent.parent / "runs"
+RUNS_DIR    = Path(__file__).parent.parent / "runs"
+RESULTS_DIR = Path(__file__).parent.parent / "results"
 
 TRACKED_METRICS = [
     "val_ph50", "val_ph10", "val_ph1", "val_ph5",
@@ -128,16 +129,22 @@ def main():
     summary = aggregate(seed_dirs)
     print_summary(summary)
 
-    out_dir = RUNS_DIR / args.run_name
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "seeds_summary.json"
-    out_path.write_text(json.dumps({
+    payload = json.dumps({
         "seeds": seeds,
         "run_name": args.run_name,
         "extra_args": extra_args,
         "metrics": summary,
-    }, indent=2))
-    print(f"Summary saved → {out_path}")
+    }, indent=2)
+
+    out_dir = RUNS_DIR / args.run_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "seeds_summary.json").write_text(payload)
+    print(f"Summary saved → {out_dir / 'seeds_summary.json'}")
+
+    results_out = RESULTS_DIR / args.run_name
+    results_out.mkdir(parents=True, exist_ok=True)
+    (results_out / "seeds_summary.json").write_text(payload)
+    print(f"Results copy  → {results_out / 'seeds_summary.json'}")
 
 
 if __name__ == "__main__":

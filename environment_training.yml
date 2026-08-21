@@ -1,0 +1,48 @@
+name: plantmetbench
+# Environment for running GNN experiments (training, ablations, evaluation).
+# This is the environment you need for reproducing all paper results.
+#
+# Install:
+#   conda env create -f environment_training.yml
+#   conda activate plantmetbench
+#
+# Requires CUDA 12.1 (A100/H100). For other CUDA versions:
+#   edit: pytorch-cuda=12.1  →  e.g. pytorch-cuda=11.8 or pytorch-cuda=12.4
+#   check your driver: nvidia-smi | head -1
+#
+# For CPU-only (laptop, no GPU):
+#   replace the two pytorch lines with:
+#     - pytorch::pytorch=2.4.*
+#     - pytorch::cpuonly
+
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+
+  # ── PyTorch ────────────────────────────────────────────────────────────────
+  - pytorch::pytorch=2.4.*
+  - pytorch::pytorch-cuda=12.1
+
+  # ── Scientific stack ───────────────────────────────────────────────────────
+  - numpy>=1.26
+  - pandas>=2.0
+  - scipy>=1.11
+  - scikit-learn>=1.4
+
+  # ── Utilities ──────────────────────────────────────────────────────────────
+  - conda-forge::requests>=2.31    # used by dataset.py for Zenodo downloads
+  - conda-forge::tqdm
+
+  # ── PyTorch Geometric ──────────────────────────────────────────────────────
+  - pip
+  - pip:
+    - torch_geometric>=2.5
+    # Uncomment for faster sparse ops (optional, may speed up training):
+    # - torch_scatter
+    # - torch_sparse
+    # Install URL: https://data.pyg.org/whl/torch-2.4.0+cu121.html

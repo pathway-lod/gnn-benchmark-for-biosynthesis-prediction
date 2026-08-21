@@ -1,6 +1,7 @@
 data/*
 !data/README.md
 runs/
+# results/ JSON files are tracked (shared reproducibility outputs)
 results/__pycache__/
 training/__pycache__/
 data_preparation/__pycache__/
