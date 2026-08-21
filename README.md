@@ -233,13 +233,13 @@ of plant metabolic pathways integrating WikiPathways-Plants, PlantCyc, and AraCy
 
 ---
 
-## Citation
+## How to cite
 
 ```bibtex
-@inproceedings{plantmetbench2025,
-  title     = {PlantMetBench: A Heterogeneous Graph Benchmark for Plant Metabolic Enzyme Prediction},
+@inproceedings{plantmetbench2026,
+  title     = {PlantMetBench: A Multimodal Knowledge Graph Benchmark for Plant Biosynthesis Prediction},
   author    = {Anonymous},
-  booktitle = {NeurIPS 2025 Workshop},
-  year      = {2025},
+  booktitle = {NeurIPS 2026 Workshop},
+  year      = {2026},
 }
 ```
