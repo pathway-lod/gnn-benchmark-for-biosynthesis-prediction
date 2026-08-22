@@ -7,7 +7,7 @@ Graph: PlantMetWiki knowledge graph, 424 plant species.
 
 Baseline (all defaults):
   HeteroSAGE · 2 layers · 128-dim · dot decoder · 200 epochs · seed 42
-  Taxa split · remove Pathway edges · disjoint_train_ratio=0.2 · no catalyzed_by
+  Taxa split · remove Pathway edges · remove Organism nodes · disjoint_train_ratio=0.2 · no catalyzed_by
   MAP4 conversion fingerprints (3072-dim) · ESM-C protein embeddings (960-dim)
   Expected: val P-H@50 ≈ 0.115  test P-H@50 ≈ 0.060  CP-AUC ≈ 0.90
 
@@ -66,6 +66,10 @@ def get_args() -> argparse.Namespace:
                          "WARNING: causes ~80%% val→test gap — ablation only.")
     ap.add_argument("--remove-gene-organism-edges", dest="remove_gene_organism_edges",
                     action="store_true", default=False)
+    ap.add_argument("--keep-organism", dest="remove_organism",
+                    action="store_false", default=True,
+                    help="Keep the Organism node store and its edges (removed by "
+                         "default, along with all edges touching it)")
     ap.add_argument("--remove-currency-metabolites", dest="remove_currency_metabolites",
                     action="store_true", default=False)
     ap.add_argument("--remove-all-metabolites", dest="remove_all_metabolites",
@@ -80,24 +84,34 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--epochs", type=int, default=200)
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=1e-5)
+    ap.add_argument("--grad-clip", type=float, default=0.5,
+                    help="Max gradient norm (clip_grad_norm_); 0 disables clipping (default 1.0)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--neg-k", type=int, default=5,
                     help="(Protein, Conversion_random) negatives per positive (default 5)")
     ap.add_argument("--neg-k-cp", type=int, default=5,
                     help="(Protein_random, Conversion) negatives per positive (default 5). "
                          "Required for healthy CP-AUC — trains the protein-ranking direction.")
-    ap.add_argument("--early-stop-patience", type=int, default=50,
+    ap.add_argument("--early-stop-patience", type=int, default=300,
                     help="Stop if val P-H@50 has not improved in this many epochs (0=disable)")
 
     # Logging
-    ap.add_argument("--log-every", type=int, default=1)
+    ap.add_argument("--log-every", type=int, default=5)
     ap.add_argument("--run-name", type=str, default="baseline",
                     help="Name for this run (used in runs/<name>/ directory)")
+    ap.add_argument("--no-dataset-summary", dest="print_dataset_summary",
+                    action="store_false", default=True,
+                    help="Suppress the dataset summary printout (useful for repeated "
+                         "loads of the same data, e.g. multi-seed runs)")
+
+    ap.add_argument("--gnn-name", type=str, default="sage",
+                    help="GNN architecture name (for W&B logging only; edit models.py to implement)")
+
 
     return ap.parse_args()
 
 
-def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs):
+def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs, grad_clip=0.5):
     model.train()
     optimizer.zero_grad()
 
@@ -118,6 +132,7 @@ def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs
         return float("nan"), True
 
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
     optimizer.step()
     return loss.item(), False
 
@@ -157,11 +172,14 @@ def run(args, run_dir: Path) -> dict:
         organism_embeddings_path=args.organism_embeddings_path,
         organism_embedding_type=args.organism_embedding_type,
         remove_gene_organism_edges=args.remove_gene_organism_edges,
+        remove_organism=args.remove_organism,
         download=args.download,
+        print_summary=args.print_dataset_summary,
     )
 
     model = build_model(
-        ctx, hidden_dim=args.hidden_dim, num_layers=args.num_layers,
+        ctx, gnn_name = args.gnn_name, 
+        hidden_dim=args.hidden_dim, num_layers=args.num_layers,
         decoder=args.decoder, dropout=args.dropout, random_seed=args.seed,
     )
 
@@ -182,11 +200,11 @@ def run(args, run_dir: Path) -> dict:
     exclude_pairs = collect_all_pairs(ctx)
     rng           = np.random.default_rng(args.seed)
 
-    run_tag    = Path(args.run_name).name
-    best_ph50  = -1.0
-    best_epoch = 0
-    best_path  = run_dir / f"{run_tag}_best.pt"
-    no_improve = 0
+    latest_path: Path | None = None
+    best_ph50   = -1.0
+    best_epoch  = 0
+    best_path: Path | None = None
+    no_improve  = 0
 
     history: dict = {k: [] for k in [
         "train_loss", "val_ph10", "val_ph50", "val_cp_auc", "val_cp_ap", "val_loss", "test_loss",
@@ -201,6 +219,7 @@ def run(args, run_dir: Path) -> dict:
         loss, diverged = _train_step(
             model, optimizer, ctx, ctx.train_data,
             args.neg_k, rng, args.neg_k_cp, exclude_pairs,
+            grad_clip=args.grad_clip,
         )
         if diverged:
             print(f"Epoch {epoch}: loss diverged — stopping.")
@@ -223,17 +242,23 @@ def run(args, run_dir: Path) -> dict:
             print(f"{epoch:>6d}  {loss:>7.4f}  {val_loss:>7.4f}  {test_loss:>8.4f} "
                   f"{ph10:>7.4f}  {ph50:>7.4f}  {val_cp_auc:>7.4f}  {dt:>5.1f}s")
 
+        if latest_path is not None and latest_path.exists():
+            latest_path.unlink()
+        latest_path = run_dir / f"{args.gnn_name}_L{args.num_layers}_latest_epoch{epoch:03d}.pt"
         torch.save({
             "epoch": epoch, "loss": loss, "val_ph50": ph50,
             "model_state": model.state_dict(), "optimizer_state": optimizer.state_dict(),
             "hparams": hparams,
-        }, run_dir / f"{run_tag}_latest.pt")
+        }, latest_path)
 
-        if ph50 > best_ph50:
+        if val_cp_auc > best_ph50:
             best_ph50  = ph50
             best_epoch = epoch
             no_improve = 0
-            torch.save(torch.load(run_dir / f"{run_tag}_latest.pt", weights_only=False), best_path)
+            if best_path is not None and best_path.exists():
+                best_path.unlink()
+            best_path = run_dir / f"{args.gnn_name}_L{args.num_layers}_epoch{epoch:03d}_best.pt"
+            torch.save(torch.load(latest_path, weights_only=False), best_path)
         else:
             no_improve += 1
 
@@ -242,7 +267,8 @@ def run(args, run_dir: Path) -> dict:
                   f"{args.early_stop_patience} epochs — early stop.")
             break
 
-    (run_dir / "history.json").write_text(json.dumps(history, indent=2))
+    history_path = run_dir / f"history_{args.gnn_name}_epoch{best_epoch:03d}.json"
+    history_path.write_text(json.dumps(history, indent=2))
 
     print(f"\nBest checkpoint: epoch {best_epoch}  val P-H@50 = {best_ph50:.4f}")
     best_ckpt = torch.load(best_path, weights_only=False)
@@ -271,8 +297,9 @@ def run(args, run_dir: Path) -> dict:
             f"{split_name}_loss":   split_loss,
         })
 
+    report_path = run_dir / f"report_{args.gnn_name}_epoch{best_epoch:03d}.json"
     save_report(
-        run_dir / "report.json",
+        report_path,
         hparams=hparams,
         dataset_stats=collect_dataset_stats(ctx),
         model_stats=collect_model_stats(model.gnn, model.predictor, ctx),
@@ -281,7 +308,7 @@ def run(args, run_dir: Path) -> dict:
 
     print(f"Checkpoint → {best_path}")
     print(f"Log        → {run_dir / 'train.log'}")
-    print(f"History    → {run_dir / 'history.json'}")
+    print(f"History    → {history_path}")
     return results
 
 
@@ -289,7 +316,8 @@ def main():
     args = get_args()
     set_seed(args.seed)
 
-    run_dir = RUNS_DIR / args.run_name
+    config_tag = f"{args.gnn_name}_L{args.num_layers}_h{args.hidden_dim}_{args.decoder}_lr{args.lr}"
+    run_dir = RUNS_DIR / args.run_name / config_tag / f"seed_{args.seed}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     with TeeLogger(run_dir / "train.log"):

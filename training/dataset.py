@@ -191,9 +191,11 @@ def load_data(
     remove_all_metabolites: bool = False,
     load_ec_embeddings: bool = False,
     remove_gene_organism_edges: bool = False,
+    remove_organism: bool = True,
     organism_embeddings_path: str | Path | None = None,
     organism_embedding_type: str = "mds",
     download: bool = True,
+    print_summary: bool = True,
 ) -> GraphContext:
     """Load the PlantMetBench dataset and return a GraphContext ready for training.
 
@@ -224,10 +226,17 @@ def load_data(
         taxa holdout — use only as an ablation, not as the baseline.
     remove_gene_organism_edges : remove (GeneProduct, organism, Organism) edges
         while keeping (Protein, organism, Organism).
+    remove_organism : remove the entire Organism node store and every edge type
+        touching it (organism, taxonomy features, etc). Drops all taxa information
+        from the graph. Default: True. Mutually exclusive in effect with
+        remove_gene_organism_edges and organism_embeddings_path (both become
+        no-ops once Organism is gone) — pass False to use either of those instead.
     organism_embeddings_path : path to embeddings_organism.pt. Replaces the
         random 64-dim Organism features with taxonomy-aware MDS coordinates.
     organism_embedding_type : "mds" (64-dim) or "multihot" (702-dim lineage).
     download : auto-download from Zenodo if required files are absent.
+    print_summary : print the node/edge/split summary block. Set False to
+        silence this when loading the same dataset repeatedly (e.g. multi-seed runs).
     """
     data_dir = Path(data_dir)
     device   = torch.device(device) if device else \
@@ -304,6 +313,14 @@ def load_data(
         if "Metabolite" in data.node_types:
             del data["Metabolite"]
         print(f"  Removed {len(met_edges)} Metabolite edge type(s) and Metabolite node store")
+
+    if remove_organism:
+        org_edges = [et for et in list(data.edge_types) if "Organism" in (et[0], et[2])]
+        for et in org_edges:
+            del data[et]
+        if "Organism" in data.node_types:
+            del data["Organism"]
+        print(f"  Removed {len(org_edges)} Organism edge type(s) and Organism node store")
 
     if remove_gene_organism_edges:
         gene_org_key = ("GeneProduct", "organism", "Organism")
@@ -469,7 +486,8 @@ def load_data(
         data_dir=data_dir,
         split_ei=pos_ei,
     )
-    _print_summary(ctx, pos_ei, embedded_only_ranking)
+    if print_summary:
+        _print_summary(ctx, pos_ei, embedded_only_ranking)
     return ctx
 
 
