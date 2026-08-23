@@ -251,7 +251,7 @@ def run(args, run_dir: Path) -> dict:
             "hparams": hparams,
         }, latest_path)
 
-        if val_cp_auc > best_ph50:
+        if ph50 > best_ph50:
             best_ph50  = ph50
             best_epoch = epoch
             no_improve = 0
