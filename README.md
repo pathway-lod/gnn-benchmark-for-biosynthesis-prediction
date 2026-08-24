@@ -172,6 +172,28 @@ Key flags:
 
 ---
 
+## Dual-encoder baseline
+
+A second standalone baseline lives in `dual_encoder/`. It requires only `torch`,
+`numpy`, and `pandas` — no graph library — and can run on a laptop CPU.
+
+```bash
+cd dual_encoder/
+pip install -r requirements.txt
+python train.py          # 5 seeds, 200 epochs; writes results/results.json
+```
+
+See [dual_encoder/README.md](dual_encoder/README.md) for the method, hyperparameters,
+and a discussion of the pool-size difference relative to the GNN baselines.
+
+> **Comparability note.** The dual encoder evaluates over **2,232 distinct ESM vectors**
+> (identical sequences deduplicated) rather than the full 8,445-node ranking pool used
+> by the GNN and BLASTp baselines. The random baseline is therefore 50/2,232 = 2.24%
+> rather than 50/8,445 = 0.59%. Direct comparison requires either re-evaluating the
+> GNN on the deduplicated pool or re-evaluating the dual encoder on the full pool.
+
+---
+
 ## Repository structure
 
 ```
@@ -204,6 +226,15 @@ plantmetbench/
 │   ├── report.py              ← JSON report + TeeLogger
 │   ├── train.py               ← single-seed training
 │   └── train_seeds.py         ← multi-seed run → mean ± std
+│
+├── dual_encoder/              ← contrastive retrieval baseline (no graph library needed)
+│   ├── README.md              ← method, hyperparameters, results, comparability note
+│   ├── requirements.txt       ← torch, numpy, pandas only
+│   ├── model.py               ← MLPEncoder + DualEncoder
+│   ├── losses.py              ← full-batch MLNCE loss
+│   ├── data.py                ← benchmark loading, split remapping
+│   ├── metrics.py             ← P-H@K, CP-AUC/AP
+│   └── train.py               ← per-seed training loop + CLI
 │
 ├── scripts/                   ← result-generation scripts
 │   ├── run_ablations.py             ← → results/ablations.json
