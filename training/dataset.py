@@ -191,9 +191,10 @@ def load_data(
     remove_all_metabolites: bool = False,
     load_ec_embeddings: bool = False,
     remove_gene_organism_edges: bool = False,
-    remove_organism: bool = True,
+    remove_organism_nodes: bool = False,
     organism_embeddings_path: str | Path | None = None,
     organism_embedding_type: str = "mds",
+    split_type: str = "taxa",
     download: bool = True,
     print_summary: bool = True,
 ) -> GraphContext:
@@ -226,11 +227,10 @@ def load_data(
         taxa holdout — use only as an ablation, not as the baseline.
     remove_gene_organism_edges : remove (GeneProduct, organism, Organism) edges
         while keeping (Protein, organism, Organism).
-    remove_organism : remove the entire Organism node store and every edge type
-        touching it (organism, taxonomy features, etc). Drops all taxa information
-        from the graph. Default: True. Mutually exclusive in effect with
-        remove_gene_organism_edges and organism_embeddings_path (both become
-        no-ops once Organism is gone) — pass False to use either of those instead.
+    remove_organism_nodes : remove the entire Organism node store and every edge type
+        touching it. Drops all taxa information from the graph (pure-biochemistry
+        baseline). Mutually exclusive in effect with remove_gene_organism_edges and
+        organism_embeddings_path.
     organism_embeddings_path : path to embeddings_organism.pt. Replaces the
         random 64-dim Organism features with taxonomy-aware MDS coordinates.
     organism_embedding_type : "mds" (64-dim) or "multihot" (702-dim lineage).
@@ -314,7 +314,7 @@ def load_data(
             del data["Metabolite"]
         print(f"  Removed {len(met_edges)} Metabolite edge type(s) and Metabolite node store")
 
-    if remove_organism:
+    if remove_organism_nodes:
         org_edges = [et for et in list(data.edge_types) if "Organism" in (et[0], et[2])]
         for et in org_edges:
             del data[et]
@@ -327,6 +327,14 @@ def load_data(
         if gene_org_key in data.edge_types:
             del data[gene_org_key]
             print("  Removed (GeneProduct, organism, Organism) edges")
+
+    if remove_organism_nodes:
+        org_edges = [et for et in list(data.edge_types) if "Organism" in (et[0], et[2])]
+        for et in org_edges:
+            del data[et]
+        if "Organism" in data.node_types:
+            del data["Organism"]
+        print(f"  Removed {len(org_edges)} Organism edge type(s) and Organism node store")
 
     if remove_currency_metabolites:
         met_ids = nodes_df.loc[nodes_df["node_type"] == "Metabolite", "node_id"].tolist()
@@ -353,12 +361,30 @@ def load_data(
             print(f"  Blocked {len(currency_idx)} currency metabolite nodes, "
                   f"removed {n_removed:,} edges")
 
-    # ── Taxa-holdout split ────────────────────────────────────────────────────
-    print("Loading taxa split …")
-    splits_taxa = torch.load(data_dir / "splits_taxa.pt", weights_only=False)
-    assert tuple(splits_taxa["target_edge"]) == TARGET_EDGE
-    pos_ei = {name: splits_taxa[f"{name}_edge_index"]
-              for name in ("train", "val", "test")}
+    # ── Split loading ─────────────────────────────────────────────────────────
+    _split_files = {
+        "taxa":    "splits_taxa.pt",
+        "pathway": "splits_pathway.pt",
+        "random":  "splits_random.pt",
+    }
+    if split_type not in _split_files:
+        raise ValueError(f"split_type must be one of {list(_split_files)}; got {split_type!r}")
+    _split_file = _split_files[split_type]
+    print(f"Loading {split_type} split …")
+    splits_data = torch.load(data_dir / _split_file, weights_only=False)
+    assert tuple(splits_data["target_edge"]) == TARGET_EDGE
+
+    if split_type == "random":
+        # splits_random.pt stores full HeteroData objects per split with pre-sampled
+        # negatives already in edge_label / edge_label_index. Extract only the positive
+        # edges so our pipeline can apply its own disjoint split and negative sampling.
+        def _pos_from_hetero(hd) -> torch.Tensor:
+            lbl = hd[TARGET_EDGE].edge_label
+            eli = hd[TARGET_EDGE].edge_label_index
+            return eli[:, lbl == 1]
+        pos_ei = {name: _pos_from_hetero(splits_data[name]) for name in ("train", "val", "test")}
+    else:
+        pos_ei = {name: splits_data[f"{name}_edge_index"] for name in ("train", "val", "test")}
 
     n_src    = data[TARGET_EDGE[0]].num_nodes
     all_pairs = {
@@ -390,12 +416,14 @@ def load_data(
             raise RuntimeError(f"Could not sample {n} negatives after 200 passes.")
         return torch.tensor(out[:n], dtype=torch.long).T
 
-    # Disjoint split: 20% of training positives are supervision-only (absent from MP graph).
+    # Disjoint split: withhold a fraction of training positives from the MP graph.
+    # When disjoint_train_ratio=0 all edges are in the MP graph and supervision uses
+    # the full training set (enabling the 1-hop shortcut — ablation only).
     n_train = pos_ei["train"].shape[1]
     n_mp    = int(round(n_train * (1.0 - disjoint_train_ratio)))
     perm_tr = torch.randperm(n_train, generator=torch.Generator().manual_seed(random_seed))
     train_mp  = pos_ei["train"][:, perm_tr[:n_mp]]
-    train_sup = pos_ei["train"][:, perm_tr[n_mp:]]
+    train_sup = pos_ei["train"] if disjoint_train_ratio == 0 else pos_ei["train"][:, perm_tr[n_mp:]]
 
     split_data = {}
     for name in ("train", "val", "test"):

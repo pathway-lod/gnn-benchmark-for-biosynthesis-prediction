@@ -1,0 +1,56 @@
+name: plantmetbench-data
+# Environment for running data preparation notebooks and embedding scripts.
+# You only need this if you want to:
+#   - Re-run the EDA / exploration notebooks (data_preparation/*.ipynb)
+#   - Recompute conversion fingerprints from downloaded MAP4 metabolite embeddings
+#     (data_preparation/scripts/compute_conversion_embeddings.py)
+#   - Recompute organism taxonomy embeddings from NCBI
+#     (data_preparation/scripts/compute_organism_embeddings.py)
+#
+# For running GNN experiments, use environment_training.yml instead.
+#
+# NOTE — what is NOT covered here (upstream-only pipelines):
+#   - Protein embeddings (ESM-C): requires esm package + GPU + UniProt sequences
+#   - Gene embeddings (PlantCaduceus): requires plantcaduceus package + DNA sequences
+#   - Metabolite MAP4 embeddings: requires rdkit + map4 + SMILES resolution
+#   - EC one-hot embeddings: requires rdflib + raw reactions.ttl from PlantMetWiki
+#   All of these pre-computed outputs are available on Zenodo:
+#     Embedding inputs: https://doi.org/10.5281/zenodo.21237830
+#
+# Install:
+#   conda env create -f environment_data_prep.yml
+#   conda activate plantmetbench-data
+
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+
+  # ── PyTorch (CPU is sufficient; GPU not needed for data prep) ──────────────
+  - pytorch::pytorch=2.4.*
+  - pytorch::cpuonly
+
+  # ── Scientific stack ───────────────────────────────────────────────────────
+  - numpy>=1.26
+  - pandas>=2.0
+  - scipy>=1.11          # classical MDS in compute_organism_embeddings.py
+  - scikit-learn>=1.4
+
+  # ── Networking / API ───────────────────────────────────────────────────────
+  - conda-forge::requests>=2.31    # NCBI efetch API (organism embeddings)
+  - conda-forge::tqdm
+
+  # ── Jupyter + visualisation ───────────────────────────────────────────────
+  - conda-forge::jupyterlab>=4.0
+  - conda-forge::matplotlib>=3.8
+  - conda-forge::seaborn>=0.13
+  - conda-forge::ipywidgets
+
+  # ── PyTorch Geometric (for notebooks that load heterodata.pt) ─────────────
+  - pip
+  - pip:
+    - torch_geometric>=2.5

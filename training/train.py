@@ -9,7 +9,8 @@ Baseline (all defaults):
   HeteroSAGE · 2 layers · 128-dim · dot decoder · 200 epochs · seed 42
   Taxa split · remove Pathway edges · remove Organism nodes · disjoint_train_ratio=0.2 · no catalyzed_by
   MAP4 conversion fingerprints (3072-dim) · ESM-C protein embeddings (960-dim)
-  Expected: val P-H@50 ≈ 0.115  test P-H@50 ≈ 0.060  CP-AUC ≈ 0.90
+  Note: best results use --num-layers 1 --remove-organism-nodes
+  Expected (1L, no organisms, seed 42): val P-H@50 ≈ 0.175  test P-H@50 ≈ 0.13
 
 Metrics:
   P-H@50   PRIMARY   fraction of reactions where true catalyst is in top-50 of 8,445
@@ -60,16 +61,27 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--no-embeddings", dest="use_embeddings", action="store_false", default=True,
                     help="Replace pre-computed embeddings with random features (structural baseline)")
 
-    # Graph ablations
+    # Graph ablations (shortcut control)
+    ap.add_argument("--disjoint-train-ratio", type=float, default=0.2,
+                    help="Fraction of train positives withheld from MP graph (default 0.2). "
+                         "Set to 0 to disable (re-introduces 1-hop shortcut).")
+    ap.add_argument("--keep-pathways", dest="keep_pathways", action="store_true", default=False,
+                    help="Keep is_part_of Pathway edges in the MP graph (re-introduces co-membership shortcut).")
+    ap.add_argument("--keep-catalyzed-by", dest="keep_catalyzed_by", action="store_true", default=False,
+                    help="Keep (Interaction, catalyzed_by, Protein) reverse edges (re-introduces 2-hop shortcut).")
     ap.add_argument("--ec-features", dest="ec_features", action="store_true", default=False,
                     help="Append 237-dim EC one-hot to Interaction nodes. "
                          "WARNING: causes ~80%% val→test gap — ablation only.")
+    ap.add_argument("--split-type", dest="split_type",
+                    choices=["taxa", "pathway", "random"], default="taxa",
+                    help="Holdout strategy: 'taxa' (species holdout, default), "
+                         "'pathway' (pathway holdout), or 'random' (random edge split).")
     ap.add_argument("--remove-gene-organism-edges", dest="remove_gene_organism_edges",
                     action="store_true", default=False)
-    ap.add_argument("--keep-organism", dest="remove_organism",
-                    action="store_false", default=True,
-                    help="Keep the Organism node store and its edges (removed by "
-                         "default, along with all edges touching it)")
+    ap.add_argument("--remove-organism-nodes", dest="remove_organism_nodes",
+                    action="store_true", default=False,
+                    help="Remove all Organism nodes and edges from the MP graph "
+                         "(pure-biochemistry baseline, no species topology).")
     ap.add_argument("--remove-currency-metabolites", dest="remove_currency_metabolites",
                     action="store_true", default=False)
     ap.add_argument("--remove-all-metabolites", dest="remove_all_metabolites",
@@ -162,17 +174,18 @@ def run(args, run_dir: Path) -> dict:
     ctx = load_data(
         data_dir=args.data_dir,
         random_seed=args.seed,
-        remove_is_part_of=True,
+        remove_is_part_of=not args.keep_pathways,
         embedded_only_ranking=True,
-        disjoint_train_ratio=0.2,
-        keep_catalyzed_by=False,
+        disjoint_train_ratio=args.disjoint_train_ratio,
+        keep_catalyzed_by=args.keep_catalyzed_by,
         load_ec_embeddings=args.ec_features,
         remove_currency_metabolites=args.remove_currency_metabolites,
         remove_all_metabolites=args.remove_all_metabolites,
         organism_embeddings_path=args.organism_embeddings_path,
         organism_embedding_type=args.organism_embedding_type,
         remove_gene_organism_edges=args.remove_gene_organism_edges,
-        remove_organism=args.remove_organism,
+        remove_organism_nodes=args.remove_organism_nodes,
+        split_type=args.split_type,
         download=args.download,
         print_summary=args.print_dataset_summary,
     )
@@ -200,11 +213,17 @@ def run(args, run_dir: Path) -> dict:
     exclude_pairs = collect_all_pairs(ctx)
     rng           = np.random.default_rng(args.seed)
 
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
+    t_train_start = time.time()
+    run_tag    = Path(args.run_name).name
+    best_ph50  = -1.0
+    best_epoch = 0
+    best_path  = run_dir / f"{run_tag}_best.pt"
+    no_improve = 0
+
     latest_path: Path | None = None
-    best_ph50   = -1.0
-    best_epoch  = 0
-    best_path: Path | None = None
-    no_improve  = 0
 
     history: dict = {k: [] for k in [
         "train_loss", "val_ph10", "val_ph50", "val_cp_auc", "val_cp_ap", "val_loss", "test_loss",
@@ -297,13 +316,26 @@ def run(args, run_dir: Path) -> dict:
             f"{split_name}_loss":   split_loss,
         })
 
-    report_path = run_dir / f"report_{args.gnn_name}_epoch{best_epoch:03d}.json"
+    total_train_time = time.time() - t_train_start
+    peak_gpu_mb = (
+        torch.cuda.max_memory_allocated() / 1e6 if torch.cuda.is_available() else 0.0
+    )
+    compute_stats = {
+        "total_train_time_s": round(total_train_time, 1),
+        "device": str(ctx.device),
+        "gpu": gpu if torch.cuda.is_available() else "CPU",
+        "peak_gpu_memory_mb": round(peak_gpu_mb, 1),
+        "epochs_run": best_epoch + (args.early_stop_patience if no_improve >= args.early_stop_patience else args.epochs),
+    }
+
+
     save_report(
-        report_path,
+        run_dir / "report.json",
         hparams=hparams,
         dataset_stats=collect_dataset_stats(ctx),
         model_stats=collect_model_stats(model.gnn, model.predictor, ctx),
         results=results,
+        compute_stats=compute_stats,
     )
 
     print(f"Checkpoint → {best_path}")

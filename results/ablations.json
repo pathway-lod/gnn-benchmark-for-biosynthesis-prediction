@@ -1,0 +1,123 @@
+{
+  "ablations": [
+    {
+      "name": "baseline",
+      "description": "Full baseline (all shortcuts removed)",
+      "flags": [],
+      "results": {
+        "best_epoch": 50,
+        "val_ph50": 0.12166859209537506,
+        "val_ph10": 0.015063730999827385,
+        "val_ph5": 0.006952491123229265,
+        "val_ph1": 0.0046349940821528435,
+        "val_cp_auc": 0.8688296996769906,
+        "val_cp_ap": 0.8158457728109777,
+        "val_loss": 0.9352905750274658,
+        "test_ph50": 0.04282655194401741,
+        "test_ph10": 0.007494646590203047,
+        "test_ph5": 0.0,
+        "test_ph1": 0.0,
+        "test_cp_auc": 0.8655590277777778,
+        "test_cp_ap": 0.7944766300785102,
+        "test_loss": 1.0087542533874512
+      }
+    },
+    {
+      "name": "keep_pathways",
+      "description": "+Pathway co-membership (is_part_of edges)",
+      "flags": [
+        "--keep-pathways"
+      ],
+      "results": {
+        "best_epoch": 27,
+        "val_ph50": 0.18655851483345032,
+        "val_ph10": 0.03012746199965477,
+        "val_ph5": 0.006952491123229265,
+        "val_ph1": 0.0,
+        "val_cp_auc": 0.8438372174690987,
+        "val_cp_ap": 0.7930948511286251,
+        "val_loss": 0.9002253413200378,
+        "test_ph50": 0.055674515664577484,
+        "test_ph10": 0.013918628916144371,
+        "test_ph5": 0.0010706637986004353,
+        "test_ph1": 0.0010706637986004353,
+        "test_cp_auc": 0.8179826388888889,
+        "test_cp_ap": 0.7389431579667827,
+        "test_loss": 1.0206298828125
+      }
+    },
+    {
+      "name": "keep_catalyzed_by",
+      "description": "+ Reverse catalysis edge (catalyzed_by)",
+      "flags": [
+        "--keep-catalyzed-by"
+      ],
+      "results": {
+        "best_epoch": 20,
+        "val_ph50": 0.010428736917674541,
+        "val_ph10": 0.0,
+        "val_ph5": 0.0,
+        "val_ph1": 0.0,
+        "val_cp_auc": 0.7427926364504839,
+        "val_cp_ap": 0.6670057220687913,
+        "val_loss": 1.2784838676452637,
+        "test_ph50": 0.004282655194401741,
+        "test_ph10": 0.0,
+        "test_ph5": 0.0,
+        "test_ph1": 0.0,
+        "test_cp_auc": 0.73211875,
+        "test_cp_ap": 0.6557422317148396,
+        "test_loss": 1.3389062881469727
+      }
+    },
+    {
+      "name": "no_disjoint",
+      "description": "No disjoint train ratio (all train edges in MP graph)",
+      "flags": [
+        "--disjoint-train-ratio",
+        "0"
+      ],
+      "results": {
+        "best_epoch": 51,
+        "val_ph50": 0.15179605782032013,
+        "val_ph10": 0.03707995265722275,
+        "val_ph5": 0.010428736917674541,
+        "val_ph1": 0.006952491123229265,
+        "val_cp_auc": 0.8761865667112847,
+        "val_cp_ap": 0.8192951949587172,
+        "val_loss": 0.8889368176460266,
+        "test_ph50": 0.059957172721624374,
+        "test_ph10": 0.0010706637986004353,
+        "test_ph5": 0.0,
+        "test_ph1": 0.0,
+        "test_cp_auc": 0.8731875000000001,
+        "test_cp_ap": 0.7975678855474158,
+        "test_loss": 0.973605751991272
+      }
+    },
+    {
+      "name": "ec_features",
+      "description": "+EC one-hot features on Interaction nodes",
+      "flags": [
+        "--ec-features"
+      ],
+      "results": {
+        "best_epoch": 48,
+        "val_ph50": 0.20741598308086395,
+        "val_ph10": 0.03823870047926903,
+        "val_ph5": 0.03592120483517647,
+        "val_ph1": 0.0046349940821528435,
+        "val_cp_auc": 0.9017818360596268,
+        "val_cp_ap": 0.8582556700597066,
+        "val_loss": 0.8707450032234192,
+        "test_ph50": 0.05674518272280693,
+        "test_ph10": 0.00963597372174263,
+        "test_ph5": 0.0021413275972008705,
+        "test_ph1": 0.0,
+        "test_cp_auc": 0.8889777777777778,
+        "test_cp_ap": 0.8211264847578106,
+        "test_loss": 0.9112018942832947
+      }
+    }
+  ]
+}
