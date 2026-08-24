@@ -164,8 +164,11 @@ def print_report(summary: dict, runs: list[dict], args: argparse.Namespace) -> N
     print(f"  Test pairs         : {runs[0]['test']['num_pairs']:,}")
 
 
+_METRIC_ALIASES = {"CP-AUC": "cp_auc", "CP-AP": "cp_ap"}
+
 def main() -> None:
     args = parse_args()
+    args.model_selection = _METRIC_ALIASES.get(args.model_selection, args.model_selection)
     device = torch.device(
         ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
     )
