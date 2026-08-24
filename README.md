@@ -87,7 +87,7 @@ For multi-seed mean±std: val 23.3% ± 4.1%, test 18.9% ± 8.3% (5 seeds).
 
 ---
 
-### Step 2 — multi-seed run (Table G.4: mean ± std)
+### Step 2 — multi-seed run (mean ± std)
 
 ```bash
 cd training/
@@ -99,7 +99,7 @@ Saves `runs/baseline/seeds_summary.json` **and** `results/baseline/seeds_summary
 
 ---
 
-### Step 3 — shortcut ablations (Table E.1)
+### Step 3 — shortcut ablations
 
 ```bash
 cd training/
@@ -120,7 +120,7 @@ Ablations available: `baseline`, `keep_pathways`, `keep_catalyzed_by`, `no_disjo
 
 ---
 
-### Step 4 — EC class distribution (Table B.4)
+### Step 4 — EC class distribution
 
 ```bash
 cd training/
@@ -178,7 +178,6 @@ Key flags:
 plantmetbench/
 ├── environment_training.yml   ← install this for all GNN experiments
 ├── environment_data_prep.yml  ← install this for data prep notebooks only
-├── environment.yml            ← alias for environment_training.yml
 │
 ├── data/                      ← downloaded automatically (gitignored)
 │   └── README.md              ← Zenodo download instructions
@@ -207,18 +206,21 @@ plantmetbench/
 │   └── train_seeds.py         ← multi-seed run → mean ± std
 │
 ├── scripts/                   ← result-generation scripts
+│   ├── run_ablations.py             ← → results/ablations.json
 │   ├── extract_ec_distribution.py   ← → results/ec_distribution.json
-│   └── run_ablations.py             ← → results/ablations.json
+│   └── eval_anyp.py                 ← any-catalyst P-H@K evaluation
 │
-├── results/                   ← machine-generated result files (tracked in git)
-│   ├── README.md              ← what each file is and how to regenerate it
-│   ├── ec_distribution.json   ← after running extract_ec_distribution.py
-│   ├── ablations.json         ← after running run_ablations.py
-│   └── baseline/
-│       └── seeds_summary.json ← after running train_seeds.py
-│
-└── paper/
-    └── references.bib         ← BibTeX for all citations
+└── results/                   ← machine-generated result files (tracked in git)
+    ├── README.md              ← what each file is and how to regenerate it
+    ├── ec_distribution.json
+    ├── ablations.json
+    ├── sage_1layer/seeds_summary.json
+    ├── sage_2layer/seeds_summary.json
+    ├── sage_3layer/seeds_summary.json
+    ├── split_random/seeds_summary.json
+    ├── split_pathway/seeds_summary.json
+    ├── org_random/seeds_summary.json
+    └── org_taxmds/seeds_summary.json
 ```
 
 ---
