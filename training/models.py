@@ -14,7 +14,7 @@ Suggested experiments:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import HeteroConv, SAGEConv
+from torch_geometric.nn import HeteroConv, SAGEConv, HGTConv, Linear, GATConv, GraphConv
 
 class HeteroGNN(nn.Module):
     """Stacked HeteroConv layers, one SAGEConv per edge type per layer.
@@ -101,13 +101,90 @@ class ModelWithPredictor(nn.Module):
         return self.predictor(src, dst, edge_label_index)
 
 
+class HGT(nn.Module):
+    def __init__(self, metadata, hidden=128, num_layers=2, num_heads=2, dropout=0.3):
+        super().__init__()
+        node_types, _ = metadata
+        self.lin_in = nn.ModuleDict({nt: Linear(-1, hidden) for nt in node_types})
+        self.convs = nn.ModuleList(
+            HGTConv(hidden, hidden, metadata, num_heads) for _ in range(num_layers)
+        )
+        self.dropout = nn.Dropout(dropout)
 
+    def forward(self, x_dict, edge_index_dict):
+        x_dict = {nt: self.lin_in[nt](x).relu() for nt, x in x_dict.items()}
+        for i, conv in enumerate(self.convs):
+            x_dict = conv(x_dict, edge_index_dict)
+            if i < len(self.convs) - 1:
+                x_dict = {nt: self.dropout(x.relu()) for nt, x in x_dict.items()}
+
+        return x_dict
+
+
+
+ 
+class GAT(nn.Module):
+    def __init__(self, metadata, hidden=128, num_layers=2, num_heads=2, dropout=0.3):
+        super().__init__()
+        node_types, edge_types = metadata
+        self.lin_in = nn.ModuleDict({nt: Linear(-1, hidden) for nt in node_types})
+        self.convs = nn.ModuleList()
+        for _ in range(num_layers):
+            conv = HeteroConv(
+                {et: GATConv(hidden, hidden, heads=num_heads, concat=False,
+                             add_self_loops=False, dropout=dropout)
+                 for et in edge_types},
+                aggr="sum")
+            self.convs.append(conv)
+        self.dropout = nn.Dropout(dropout)
+ 
+    def forward(self, x_dict, edge_index_dict):
+        x_dict = {nt: self.lin_in[nt](x).relu() for nt, x in x_dict.items()}
+        for i, conv in enumerate(self.convs):
+            x_dict = conv(x_dict, edge_index_dict)
+            if i < len(self.convs) - 1:
+                x_dict = {nt: self.dropout(x.relu()) for nt, x in x_dict.items()}
+        return x_dict
+
+
+
+
+ 
+
+
+class RGCN(nn.Module):
+    """Relational GCN — one GraphConv per edge type per layer, summed per node type.
+
+    Ported from rchnn--/rchnn/models.py. Simpler than GAT/HGT (no attention),
+    a good baseline to check whether attention is actually earning its keep here.
+    """
+
+    def __init__(self, metadata, hidden: int = 128, num_layers: int = 2, dropout: float = 0.3):
+        super().__init__()
+        node_types, edge_types = metadata
+        self.lin_in = nn.ModuleDict({nt: Linear(-1, hidden) for nt in node_types})
+        self.convs = nn.ModuleList()
+        for _ in range(num_layers):
+            conv = HeteroConv(
+                {et: GraphConv(hidden, hidden) for et in edge_types},
+                aggr="sum")
+            self.convs.append(conv)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x_dict, edge_index_dict):
+        x_dict = {nt: self.lin_in[nt](x).relu() for nt, x in x_dict.items()}
+        for i, conv in enumerate(self.convs):
+            x_dict = conv(x_dict, edge_index_dict)
+            if i < len(self.convs) - 1:
+                x_dict = {nt: self.dropout(x.relu()) for nt, x in x_dict.items()}
+        return x_dict
 
 
 def build_model(
     ctx,
-    hidden_dim: int = 128,
-    num_layers: int = 2,
+    gnn_name : str = "sage",
+    hidden_dim: int = 64,
+    num_layers: int = 1,
     decoder: str = "dot",
     dropout: float = 0.3,
     random_seed: int = 42,
@@ -126,8 +203,37 @@ def build_model(
         et for et in ctx.train_data.edge_types
         if ctx.train_data[et].edge_index.shape[1] > 0
     ]
-    gnn = HeteroGNN(edge_types, hidden_dim=hidden_dim,
-                      num_layers=num_layers, dropout=dropout).to(ctx.device)
+
+    node_types = [
+        et for et in ctx.train_data.node_types
+    ]
+
+    print(f"Node types : {node_types}")
+    
+    for nt in ctx.train_data.node_types:
+        store = ctx.train_data[nt]
+        x_shape = tuple(store.x.shape) if "x" in store else None
+        print(f"  {nt:<10}  num_nodes={store.num_nodes:>9,d}  x={x_shape}")
+
+
+    if gnn_name.lower() == "sage":
+        print(f" -------- GNN = SAGE ------------")
+        gnn = HeteroGNN(edge_types, hidden_dim=hidden_dim,
+                          num_layers=num_layers, dropout=dropout).to(ctx.device)
+    elif gnn_name == "hgt":
+        # from hgtconv import HGTConv
+        print(f" ---------- GNN = HGT -----------")
+        gnn = HGT([node_types, edge_types], hidden=hidden_dim,
+                          num_layers=num_layers, dropout=dropout).to(ctx.device)
+    elif gnn_name == "gat":
+        print(f" ----------- GNN = GAT -----------")
+        gnn = GAT([node_types, edge_types], hidden=hidden_dim,
+                          num_layers=num_layers, dropout=dropout).to(ctx.device)
+    elif gnn_name == "rgcn":
+        print(f" ----------- GNN = RGCN -----------")
+        gnn = RGCN([node_types, edge_types], hidden=hidden_dim,
+                          num_layers=num_layers, dropout=dropout).to(ctx.device)
+
     predictor = (
         MLPPredictor(hidden_dim) if decoder == "mlp" else DotPredictor()
     ).to(ctx.device)

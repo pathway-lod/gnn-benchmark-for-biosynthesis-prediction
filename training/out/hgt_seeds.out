@@ -1,0 +1,326 @@
+============================================================================================== 
+Warning! Mixing Conda and module environments may lead to corruption of the
+user environment. 
+We do not recommend users mixing those two environments unless absolutely
+necessary. Note that 
+SURF does not provide any support for Conda environment.
+For more information, please refer to our software policy page:
+https://servicedesk.surf.nl/wiki/display/WIKI/Software+policy+Snellius#SoftwarepolicySnellius-UseofAnacondaandMinicondaenvironmentsonSnellius 
+
+Remember that many packages have already been installed on the system and can
+be loaded using 
+the 'module load <package__name>' command. If you are uncertain if a package is
+already available 
+on the system, please use 'module avail' or 'module spider' to search for it.
+============================================================================================== 
+/var/spool/slurm/slurmd/job25929233/slurm_script: line 18: cd: /home/binal1/...: No such file or directory
+# Log started at 2026-08-21T12:57:44.437823
+# Log file: /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42/train.log
+
+Run: baseline  seed=42  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42
+  Device: cuda  (NVIDIA H100)
+
+Loading graph from /gpfs/home5/binal1/plantmetbench/data …
+  Protein embeddings: 8,445/13,682 nodes covered (61.7%)  dim=960
+  Removed 6 is_part_of edge type(s) and Pathway node store
+Loading taxa split …
+  Conversion fingerprints: 19,927/84,470 nodes (23.6%)  dim=3072
+  Ranking pool: 8,445/13,682 proteins have embeddings (61.7%)
+
+────────────────────────────────────────────────────────────────────────
+Dataset summary
+────────────────────────────────────────────────────────────────────────
+  Target edge : ('Protein', 'catalyzes', 'Interaction')
+
+Node types:
+  GeneProduct   num_nodes=    6,480  x=(6480, 1024)
+  Interaction   num_nodes=   84,470  x=(84470, 3072)
+  Metabolite    num_nodes=   17,476  x=(17476, 1024)
+  Organism      num_nodes=      424  x=(424, 64)
+  Protein       num_nodes=   13,682  x=(13682, 960)
+Edge types:
+  ('GeneProduct', 'encodes', 'Protein')               num_edges=     2,762
+  ('GeneProduct', 'is_about', 'GeneProduct')          num_edges=     4,580
+  ('GeneProduct', 'organism', 'Organism')             num_edges=     6,504
+  ('Interaction', 'is_about', 'Interaction')          num_edges=    29,740
+  ('Interaction', 'participants', 'Interaction')      num_edges=     9,813
+  ('Interaction', 'participants', 'Metabolite')       num_edges=    34,793
+  ('Interaction', 'source', 'Metabolite')             num_edges=     7,554
+  ('Interaction', 'target', 'Interaction')            num_edges=        17
+  ('Interaction', 'target', 'Metabolite')             num_edges=    18,622
+  ('Metabolite', 'is_about', 'Metabolite')            num_edges=    12,812
+  ('Metabolite', 'organism', 'Organism')              num_edges=    17,489
+  ('Protein', 'catalyzes', 'Interaction')             num_edges=     7,655
+  ('Protein', 'encoded_by', 'GeneProduct')            num_edges=     2,762
+  ('Protein', 'is_about', 'GeneProduct')              num_edges=        83
+  ('Protein', 'is_about', 'Protein')                  num_edges=     9,932
+  ('Protein', 'organism', 'Organism')                 num_edges=    13,725
+
+  Positive edge splits:
+    train    9,569 edges
+    val      1,211 edges
+    test     1,200 edges
+
+  Ranking pool : 8,445 proteins  (embedded only)
+  Random P-H@50: 0.0059  (0.59%)
+────────────────────────────────────────────────────────────────────────
+
+Node types : ['GeneProduct', 'Interaction', 'Metabolite', 'Organism', 'Protein']
+  GeneProduct  num_nodes=    6,480  x=(6480, 1024)
+  Interaction  num_nodes=   84,470  x=(84470, 3072)
+  Metabolite  num_nodes=   17,476  x=(17476, 1024)
+  Organism    num_nodes=      424  x=(424, 64)
+  Protein     num_nodes=   13,682  x=(13682, 960)
+ ---------- GNN = HGT -----------
+Running dummy forward pass to materialize weights...
+Model: HeteroGNN  hidden_dim=128  num_layers=2  decoder=dot  dropout=0.3
+  Edge types in GNN: 16
+  Trainable parameters: 1,971,914
+ Epoch     loss val_loss tst_loss  P-H@10   P-H@50   CP-AUC    time
+──────────────────────────────────────────────────────────────────
+    50   0.4937   0.9164    0.9286  0.0000   0.0000   0.5196    0.3s
+   100   0.3690   0.9610    0.9636  0.0000   0.0000   0.8624    0.3s
+   150   0.2566   0.8647    0.8702  0.0012   0.0174   0.8851    0.3s
+   200   0.2288   0.9739    1.0269  0.0023   0.0406   0.8799    0.3s
+
+Best checkpoint: epoch 143  val P-H@50 = 0.0545
+
+── Final evaluation (best checkpoint) ──────────────────────────────
+  val:
+    P-H@1=0.0000  P-H@5=0.0000  P-H@10=0.0035  P-H@50=0.0545
+    CP-AUC=0.8902  CP-AP=0.8077  loss=0.8980
+  test:
+    P-H@1=0.0000  P-H@5=0.0021  P-H@10=0.0021  P-H@50=0.0150
+    CP-AUC=0.8984  CP-AP=0.8108  loss=0.8890
+
+Report saved → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42/report_hgt_epoch143.json
+Checkpoint → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42/hgt_epoch143_best.pt
+Log        → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42/train.log
+History    → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42/history_hgt_epoch143.json
+# Log started at 2026-08-21T12:58:53.304792
+# Log file: /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0/train.log
+
+Run: baseline  seed=0  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0
+  Device: cuda  (NVIDIA H100)
+
+Loading graph from /gpfs/home5/binal1/plantmetbench/data …
+  Protein embeddings: 8,445/13,682 nodes covered (61.7%)  dim=960
+  Removed 6 is_part_of edge type(s) and Pathway node store
+Loading taxa split …
+  Conversion fingerprints: 19,927/84,470 nodes (23.6%)  dim=3072
+  Ranking pool: 8,445/13,682 proteins have embeddings (61.7%)
+Node types : ['GeneProduct', 'Interaction', 'Metabolite', 'Organism', 'Protein']
+  GeneProduct  num_nodes=    6,480  x=(6480, 1024)
+  Interaction  num_nodes=   84,470  x=(84470, 3072)
+  Metabolite  num_nodes=   17,476  x=(17476, 1024)
+  Organism    num_nodes=      424  x=(424, 64)
+  Protein     num_nodes=   13,682  x=(13682, 960)
+ ---------- GNN = HGT -----------
+Running dummy forward pass to materialize weights...
+Model: HeteroGNN  hidden_dim=128  num_layers=2  decoder=dot  dropout=0.3
+  Edge types in GNN: 16
+  Trainable parameters: 1,971,914
+ Epoch     loss val_loss tst_loss  P-H@10   P-H@50   CP-AUC    time
+──────────────────────────────────────────────────────────────────
+    50   0.4941   0.9047    0.9174  0.0000   0.0000   0.5253    0.3s
+   100   0.3680   0.9711    0.9804  0.0000   0.0000   0.8557    0.3s
+   150   0.2623   0.8865    0.8658  0.0000   0.0255   0.8991    0.3s
+   200   0.2313   0.8733    0.9249  0.0151   0.1356   0.8799    0.3s
+
+Best checkpoint: epoch 200  val P-H@50 = 0.1356
+
+── Final evaluation (best checkpoint) ──────────────────────────────
+  val:
+    P-H@1=0.0000  P-H@5=0.0000  P-H@10=0.0151  P-H@50=0.1356
+    CP-AUC=0.8735  CP-AP=0.8055  loss=0.8733
+  test:
+    P-H@1=0.0000  P-H@5=0.0011  P-H@10=0.0011  P-H@50=0.0300
+    CP-AUC=0.8752  CP-AP=0.7956  loss=0.9249
+
+Report saved → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0/report_hgt_epoch200.json
+Checkpoint → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0/hgt_epoch200_best.pt
+Log        → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0/train.log
+History    → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0/history_hgt_epoch200.json
+# Log started at 2026-08-21T13:00:02.731277
+# Log file: /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1/train.log
+
+Run: baseline  seed=1  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1
+  Device: cuda  (NVIDIA H100)
+
+Loading graph from /gpfs/home5/binal1/plantmetbench/data …
+  Protein embeddings: 8,445/13,682 nodes covered (61.7%)  dim=960
+  Removed 6 is_part_of edge type(s) and Pathway node store
+Loading taxa split …
+  Conversion fingerprints: 19,927/84,470 nodes (23.6%)  dim=3072
+  Ranking pool: 8,445/13,682 proteins have embeddings (61.7%)
+Node types : ['GeneProduct', 'Interaction', 'Metabolite', 'Organism', 'Protein']
+  GeneProduct  num_nodes=    6,480  x=(6480, 1024)
+  Interaction  num_nodes=   84,470  x=(84470, 3072)
+  Metabolite  num_nodes=   17,476  x=(17476, 1024)
+  Organism    num_nodes=      424  x=(424, 64)
+  Protein     num_nodes=   13,682  x=(13682, 960)
+ ---------- GNN = HGT -----------
+Running dummy forward pass to materialize weights...
+Model: HeteroGNN  hidden_dim=128  num_layers=2  decoder=dot  dropout=0.3
+  Edge types in GNN: 16
+  Trainable parameters: 1,971,914
+ Epoch     loss val_loss tst_loss  P-H@10   P-H@50   CP-AUC    time
+──────────────────────────────────────────────────────────────────
+    50   0.5006   0.9358    0.9491  0.0000   0.0000   0.5042    0.3s
+   100   0.3647   0.9579    0.9599  0.0000   0.0000   0.8606    0.3s
+   150   0.2512   0.8455    0.8366  0.0081   0.0394   0.8813    0.3s
+   200   0.2316   0.9910    1.0060  0.0070   0.0556   0.8724    0.3s
+
+Best checkpoint: epoch 153  val P-H@50 = 0.0649
+
+── Final evaluation (best checkpoint) ──────────────────────────────
+  val:
+    P-H@1=0.0000  P-H@5=0.0023  P-H@10=0.0035  P-H@50=0.0649
+    CP-AUC=0.8807  CP-AP=0.8042  loss=0.8560
+  test:
+    P-H@1=0.0000  P-H@5=0.0064  P-H@10=0.0064  P-H@50=0.0557
+    CP-AUC=0.8863  CP-AP=0.8035  loss=0.8523
+
+Report saved → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1/report_hgt_epoch153.json
+Checkpoint → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1/hgt_epoch153_best.pt
+Log        → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1/train.log
+History    → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1/history_hgt_epoch153.json
+# Log started at 2026-08-21T13:01:11.438637
+# Log file: /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2/train.log
+
+Run: baseline  seed=2  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2
+  Device: cuda  (NVIDIA H100)
+
+Loading graph from /gpfs/home5/binal1/plantmetbench/data …
+  Protein embeddings: 8,445/13,682 nodes covered (61.7%)  dim=960
+  Removed 6 is_part_of edge type(s) and Pathway node store
+Loading taxa split …
+  Conversion fingerprints: 19,927/84,470 nodes (23.6%)  dim=3072
+  Ranking pool: 8,445/13,682 proteins have embeddings (61.7%)
+Node types : ['GeneProduct', 'Interaction', 'Metabolite', 'Organism', 'Protein']
+  GeneProduct  num_nodes=    6,480  x=(6480, 1024)
+  Interaction  num_nodes=   84,470  x=(84470, 3072)
+  Metabolite  num_nodes=   17,476  x=(17476, 1024)
+  Organism    num_nodes=      424  x=(424, 64)
+  Protein     num_nodes=   13,682  x=(13682, 960)
+ ---------- GNN = HGT -----------
+Running dummy forward pass to materialize weights...
+Model: HeteroGNN  hidden_dim=128  num_layers=2  decoder=dot  dropout=0.3
+  Edge types in GNN: 16
+  Trainable parameters: 1,971,914
+ Epoch     loss val_loss tst_loss  P-H@10   P-H@50   CP-AUC    time
+──────────────────────────────────────────────────────────────────
+    50   0.4961   0.8833    0.8881  0.0000   0.0000   0.5430    0.3s
+   100   0.3669   0.9748    0.9729  0.0000   0.0000   0.8599    0.3s
+   150   0.2650   0.8698    0.8642  0.0035   0.0498   0.8936    0.3s
+   200   0.2307   0.8959    0.9193  0.0209   0.1031   0.8828    0.3s
+
+Best checkpoint: epoch 194  val P-H@50 = 0.1240
+
+── Final evaluation (best checkpoint) ──────────────────────────────
+  val:
+    P-H@1=0.0000  P-H@5=0.0081  P-H@10=0.0104  P-H@50=0.1240
+    CP-AUC=0.8690  CP-AP=0.7962  loss=0.8498
+  test:
+    P-H@1=0.0000  P-H@5=0.0032  P-H@10=0.0043  P-H@50=0.0236
+    CP-AUC=0.8732  CP-AP=0.7872  loss=0.8767
+
+Report saved → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2/report_hgt_epoch194.json
+Checkpoint → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2/hgt_epoch194_best.pt
+Log        → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2/train.log
+History    → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2/history_hgt_epoch194.json
+# Log started at 2026-08-21T13:02:20.063835
+# Log file: /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_3/train.log
+
+Run: baseline  seed=3  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_3
+  Device: cuda  (NVIDIA H100)
+
+Loading graph from /gpfs/home5/binal1/plantmetbench/data …
+  Protein embeddings: 8,445/13,682 nodes covered (61.7%)  dim=960
+  Removed 6 is_part_of edge type(s) and Pathway node store
+Loading taxa split …
+  Conversion fingerprints: 19,927/84,470 nodes (23.6%)  dim=3072
+  Ranking pool: 8,445/13,682 proteins have embeddings (61.7%)
+Node types : ['GeneProduct', 'Interaction', 'Metabolite', 'Organism', 'Protein']
+  GeneProduct  num_nodes=    6,480  x=(6480, 1024)
+  Interaction  num_nodes=   84,470  x=(84470, 3072)
+  Metabolite  num_nodes=   17,476  x=(17476, 1024)
+  Organism    num_nodes=      424  x=(424, 64)
+  Protein     num_nodes=   13,682  x=(13682, 960)
+ ---------- GNN = HGT -----------
+Running dummy forward pass to materialize weights...
+Model: HeteroGNN  hidden_dim=128  num_layers=2  decoder=dot  dropout=0.3
+  Edge types in GNN: 16
+  Trainable parameters: 1,971,914
+ Epoch     loss val_loss tst_loss  P-H@10   P-H@50   CP-AUC    time
+──────────────────────────────────────────────────────────────────
+    50   0.4988   0.9185    0.9303  0.0000   0.0000   0.5147    0.3s
+Traceback (most recent call last):
+  File "/home/binal1/miniconda3/envs/env/lib/python3.10/site-packages/torch/serialization.py", line 967, in save
+    _save(
+  File "/home/binal1/miniconda3/envs/env/lib/python3.10/site-packages/torch/serialization.py", line 1268, in _save
+    zip_file.write_record(name, storage, num_bytes)
+RuntimeError: [enforce fail at inline_container.cc:858] . PytorchStreamWriter failed writing file data/20: file write failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/gpfs/home5/binal1/plantmetbench/training/train.py", line 318, in <module>
+    main()
+  File "/gpfs/home5/binal1/plantmetbench/training/train.py", line 314, in main
+    run(args, run_dir)
+  File "/gpfs/home5/binal1/plantmetbench/training/train.py", line 239, in run
+    torch.save({
+  File "/home/binal1/miniconda3/envs/env/lib/python3.10/site-packages/torch/serialization.py", line 966, in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+  File "/home/binal1/miniconda3/envs/env/lib/python3.10/site-packages/torch/serialization.py", line 798, in __exit__
+    self.file_like.write_end_of_file()
+RuntimeError: [enforce fail at inline_container.cc:664] . unexpected pos 4181760 vs 4181648
+PlantMetBench — multi-seed training
+  Seeds    : [42, 0, 1, 2, 3]
+  Run name : baseline
+  Extra    : --gnn-name hgt --epochs 200 --decoder dot
+
+======================================================================
+  Seed 42  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_42/
+======================================================================
+
+======================================================================
+  Seed 0  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_0/
+======================================================================
+
+======================================================================
+  Seed 1  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_1/
+======================================================================
+
+======================================================================
+  Seed 2  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_2/
+======================================================================
+
+======================================================================
+  Seed 3  →  /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_3/
+======================================================================
+  [WARNING] Seed 3 exited with code 1
+  [WARNING] No report_*.json under /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seed_3 — skipping
+
+======================================================================
+  Multi-seed summary
+======================================================================
+  Metric                    Mean       Std  n
+  --------------------------------------------------
+  val_ph50                0.0947    0.0410  4
+  val_ph10                0.0081    0.0057  4
+  val_ph1                 0.0000    0.0000  4
+  val_ph5                 0.0026    0.0038  4
+  val_cp_auc              0.8784    0.0093  4
+  val_cp_ap               0.8034    0.0050  4
+  test_ph50               0.0310    0.0175  4
+  test_ph10               0.0035    0.0024  4
+  test_ph1                0.0000    0.0000  4
+  test_ph5                0.0032    0.0023  4
+  test_cp_auc             0.8833    0.0116  4
+  test_cp_ap              0.7993    0.0102  4
+  best_epoch            172.5000   28.6880  4
+
+Summary saved → /gpfs/home5/binal1/plantmetbench/runs/baseline/seeds_summary.json
+Summary saved → /gpfs/home5/binal1/plantmetbench/runs/baseline/hgt/seeds_summary.json
