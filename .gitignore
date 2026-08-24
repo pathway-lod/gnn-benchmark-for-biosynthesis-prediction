@@ -19,3 +19,6 @@ environment_pinned.yml
 # paper draft — kept in Overleaf, not in the public repo
 appendix.tex
 *.tex
+
+# SLURM job output logs
+training/out/
