@@ -15,7 +15,7 @@ cross-species taxa holdout — the model never sees the test organisms during tr
 | Split | Taxa holdout (11 val / 69 test organisms) |
 | Primary metric | P-H@50 (protein ranking hits at 50) |
 | Random P-H@50 | 50 / 8,445 ≈ 0.59% |
-| Baseline P-H@50 | val 11.5% / test 6.0% |
+| Baseline P-H@50 | val 23.3% / test 18.9% (1-layer, no organisms) |
 
 ---
 
@@ -75,14 +75,15 @@ cd training/
 python train.py
 ```
 
-Expected output (after ~200 epochs):
+Expected output (after ~200 epochs, seed 42):
 
 ```
-val  P-H@50 = 0.1150   CP-AUC = 0.906   CP-AP = 0.858
-test P-H@50 = 0.0600   CP-AUC = 0.891   CP-AP = 0.817
+val  P-H@50 ≈ 0.175   CP-AUC ≈ 0.87   CP-AP ≈ 0.85
+test P-H@50 ≈ 0.13    CP-AUC ≈ 0.84   CP-AP ≈ 0.80
 ```
 
 Results are saved to `runs/baseline/report.json` (includes GPU timing + peak memory).
+For multi-seed mean±std: val 23.3% ± 4.1%, test 18.9% ± 8.3% (5 seeds).
 
 ---
 

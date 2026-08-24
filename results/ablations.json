@@ -2,7 +2,7 @@
   "ablations": [
     {
       "name": "baseline",
-      "description": "All shortcuts removed (default baseline)",
+      "description": "Full baseline (all shortcuts removed)",
       "flags": [],
       "results": {
         "best_epoch": 50,
@@ -24,7 +24,7 @@
     },
     {
       "name": "keep_pathways",
-      "description": "+Pathway co-membership (is_part_of edges kept)",
+      "description": "+Pathway co-membership (is_part_of edges)",
       "flags": [
         "--keep-pathways"
       ],
@@ -48,7 +48,7 @@
     },
     {
       "name": "keep_catalyzed_by",
-      "description": "+Reverse catalysis edge (catalyzed_by kept)",
+      "description": "+ Reverse catalysis edge (catalyzed_by)",
       "flags": [
         "--keep-catalyzed-by"
       ],
@@ -77,7 +77,23 @@
         "--disjoint-train-ratio",
         "0"
       ],
-      "results": {}
+      "results": {
+        "best_epoch": 51,
+        "val_ph50": 0.15179605782032013,
+        "val_ph10": 0.03707995265722275,
+        "val_ph5": 0.010428736917674541,
+        "val_ph1": 0.006952491123229265,
+        "val_cp_auc": 0.8761865667112847,
+        "val_cp_ap": 0.8192951949587172,
+        "val_loss": 0.8889368176460266,
+        "test_ph50": 0.059957172721624374,
+        "test_ph10": 0.0010706637986004353,
+        "test_ph5": 0.0,
+        "test_ph1": 0.0,
+        "test_cp_auc": 0.8731875000000001,
+        "test_cp_ap": 0.7975678855474158,
+        "test_loss": 0.973605751991272
+      }
     },
     {
       "name": "ec_features",

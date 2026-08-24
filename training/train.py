@@ -9,7 +9,8 @@ Baseline (all defaults):
   HeteroSAGE · 2 layers · 128-dim · dot decoder · 200 epochs · seed 42
   Taxa split · remove Pathway edges · disjoint_train_ratio=0.2 · no catalyzed_by
   MAP4 conversion fingerprints (3072-dim) · ESM-C protein embeddings (960-dim)
-  Expected: val P-H@50 ≈ 0.115  test P-H@50 ≈ 0.060  CP-AUC ≈ 0.90
+  Note: best results use --num-layers 1 --remove-organism-nodes
+  Expected (1L, no organisms, seed 42): val P-H@50 ≈ 0.175  test P-H@50 ≈ 0.13
 
 Metrics:
   P-H@50   PRIMARY   fraction of reactions where true catalyst is in top-50 of 8,445
@@ -71,8 +72,16 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--ec-features", dest="ec_features", action="store_true", default=False,
                     help="Append 237-dim EC one-hot to Interaction nodes. "
                          "WARNING: causes ~80%% val→test gap — ablation only.")
+    ap.add_argument("--split-type", dest="split_type",
+                    choices=["taxa", "pathway", "random"], default="taxa",
+                    help="Holdout strategy: 'taxa' (species holdout, default), "
+                         "'pathway' (pathway holdout), or 'random' (random edge split).")
     ap.add_argument("--remove-gene-organism-edges", dest="remove_gene_organism_edges",
                     action="store_true", default=False)
+    ap.add_argument("--remove-organism-nodes", dest="remove_organism_nodes",
+                    action="store_true", default=False,
+                    help="Remove all Organism nodes and edges from the MP graph "
+                         "(pure-biochemistry baseline, no species topology).")
     ap.add_argument("--remove-currency-metabolites", dest="remove_currency_metabolites",
                     action="store_true", default=False)
     ap.add_argument("--remove-all-metabolites", dest="remove_all_metabolites",
@@ -164,6 +173,8 @@ def run(args, run_dir: Path) -> dict:
         organism_embeddings_path=args.organism_embeddings_path,
         organism_embedding_type=args.organism_embedding_type,
         remove_gene_organism_edges=args.remove_gene_organism_edges,
+        remove_organism_nodes=args.remove_organism_nodes,
+        split_type=args.split_type,
         download=args.download,
     )
 
