@@ -186,11 +186,19 @@ python train.py          # 5 seeds, 200 epochs; writes results/results.json
 See [dual_encoder/README.md](dual_encoder/README.md) for the method, hyperparameters,
 and a discussion of the pool-size difference relative to the GNN baselines.
 
-> **Comparability note.** The dual encoder evaluates over **2,232 distinct ESM vectors**
-> (identical sequences deduplicated) rather than the full 8,445-node ranking pool used
-> by the GNN and BLASTp baselines. The random baseline is therefore 50/2,232 = 2.24%
-> rather than 50/8,445 = 0.59%. Direct comparison requires either re-evaluating the
-> GNN on the deduplicated pool or re-evaluating the dual encoder on the full pool.
+> **Pool-size comparability.** The dual encoder's default evaluation uses **2,232
+> distinct ESM-C vectors** (identical protein sequences collapsed); the full pool has
+> 8,445 proteins. Use `--keep_duplicates` to evaluate on the same 8,445-protein pool
+> as the GNN and BLASTp baselines. Results on both pool sizes are in the paper appendix.
+>
+> | Method          | Pool size | P-H@50 (test) |
+> |-----------------|-----------|---------------|
+> | Dual enc. L1    | 8,445     | 32.8 ± 0.5%   |
+> | Dual enc. L2    | 8,445     | 32.6 ± 1.0%   |
+> | Dual enc. L3    | 8,445     | 30.6 ± 1.0%   |
+> | Dual enc. L2    | 2,232     | 63.0 ± 0.8%   |
+> | BLASTp          | 8,445     | 32.4%         |
+> | HeteroSAGE (1L) | 8,445     | 18.9 ± 8.3%   |
 
 ---
 
