@@ -73,9 +73,13 @@ def get_args() -> argparse.Namespace:
                     help="Append 237-dim EC one-hot to Interaction nodes. "
                          "WARNING: causes ~80%% val→test gap — ablation only.")
     ap.add_argument("--split-type", dest="split_type",
-                    choices=["taxa", "pathway", "random"], default="taxa",
+                    choices=["taxa", "pathway", "random", "ath_pathway"], default="taxa",
                     help="Holdout strategy: 'taxa' (species holdout, default), "
-                         "'pathway' (pathway holdout), or 'random' (random edge split).")
+                         "'pathway' (pathway holdout), 'random' (random edge split), "
+                         "or 'ath_pathway' (A. thaliana within-species pathway holdout).")
+    ap.add_argument("--species-pool", dest="species_pool",
+                    action="store_true", default=False,
+                    help="Restrict ranking pool to species proteins (only with ath_pathway).")
     ap.add_argument("--remove-gene-organism-edges", dest="remove_gene_organism_edges",
                     action="store_true", default=False)
     ap.add_argument("--remove-organism-nodes", dest="remove_organism_nodes",
@@ -186,6 +190,7 @@ def run(args, run_dir: Path) -> dict:
         remove_gene_organism_edges=args.remove_gene_organism_edges,
         remove_organism_nodes=args.remove_organism_nodes,
         split_type=args.split_type,
+        species_pool=args.species_pool,
         download=args.download,
         print_summary=args.print_dataset_summary,
     )
