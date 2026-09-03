@@ -195,6 +195,7 @@ def load_data(
     organism_embeddings_path: str | Path | None = None,
     organism_embedding_type: str = "mds",
     split_type: str = "taxa",
+    species_pool: bool = False,
     download: bool = True,
     print_summary: bool = True,
 ) -> GraphContext:
@@ -234,6 +235,9 @@ def load_data(
     organism_embeddings_path : path to embeddings_organism.pt. Replaces the
         random 64-dim Organism features with taxonomy-aware MDS coordinates.
     organism_embedding_type : "mds" (64-dim) or "multihot" (702-dim lineage).
+    species_pool : if True and split_type is "ath_pathway", restrict the
+        ranking pool to A. thaliana proteins only (5,289 proteins with ESM-C,
+        random P-H@50≈0.95%).  Ignored for other split types.
     download : auto-download from Zenodo if required files are absent.
     print_summary : print the node/edge/split summary block. Set False to
         silence this when loading the same dataset repeatedly (e.g. multi-seed runs).
@@ -363,9 +367,10 @@ def load_data(
 
     # ── Split loading ─────────────────────────────────────────────────────────
     _split_files = {
-        "taxa":    "splits_taxa.pt",
-        "pathway": "splits_pathway.pt",
-        "random":  "splits_random.pt",
+        "taxa":        "splits_taxa.pt",
+        "pathway":     "splits_pathway.pt",
+        "random":      "splits_random.pt",
+        "ath_pathway": "splits_ath_pathway.pt",
     }
     if split_type not in _split_files:
         raise ValueError(f"split_type must be one of {list(_split_files)}; got {split_type!r}")
@@ -492,6 +497,21 @@ def load_data(
     conv_idxs_tensor = torch.tensor(conv_idxs, dtype=torch.long)
 
     emb_mask = _build_embedded_mask_from_x(data, nodes_df) if embedded_only_ranking else None
+
+    # Restrict ranking pool to species proteins when species_pool=True and
+    # the split file carries ath_protein_idxs (currently only ath_pathway).
+    if species_pool and split_type == "ath_pathway" and "ath_protein_idxs" in splits_data:
+        ath_idxs = splits_data["ath_protein_idxs"]
+        n_prot_nodes = data["Protein"].num_nodes
+        species_mask = torch.zeros(n_prot_nodes, dtype=torch.bool)
+        species_mask[ath_idxs] = True
+        if emb_mask is not None:
+            emb_mask = emb_mask & species_mask
+        else:
+            emb_mask = species_mask
+        n_sp = int(emb_mask.sum())
+        print(f"  Species pool restricted to {n_sp:,} A. thaliana proteins  "
+              f"(random P-H@50={50/n_sp:.2%})")
 
     all_catalyst_lookup: dict[int, set] = {}
     for ei in pos_ei.values():
