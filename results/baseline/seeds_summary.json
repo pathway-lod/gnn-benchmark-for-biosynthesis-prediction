@@ -1,0 +1,26 @@
+{
+  "seeds": [
+    42,
+    0,
+    1,
+    2,
+    3
+  ],
+  "run_name": "baseline",
+  "gnn_name": "HGT",
+  "num_layers": "2",
+  "hidden_dim": "128",
+  "decoder": "dot",
+  "lr": "0.0001",
+  "config_tag": "HGT_L2_h128_dot_lr0.0001",
+  "extra_args": [
+    "--split-type",
+    "ath_pathway",
+    "--species-pool",
+    "--gnn-name",
+    "HGT",
+    "--output",
+    "results/ath_baseline/HGT_ath.json"
+  ],
+  "metrics": {}
+}
