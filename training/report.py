@@ -81,6 +81,7 @@ def save_report(
     dataset_stats: dict,
     model_stats: dict,
     results: dict,
+    compute_stats: dict | None = None,
 ) -> None:
     """Save a structured JSON report capturing everything about a run.
 
@@ -91,6 +92,7 @@ def save_report(
     dataset_stats: graph statistics (node counts, edge counts, split sizes, ...)
     model_stats  : trainable parameter count, edge type count, ...
     results      : final val + test metric values
+    compute_stats: optional -- train time, peak GPU memory, epochs run, etc.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -103,6 +105,8 @@ def save_report(
         "model_stats":   model_stats,
         "results":       results,
     }
+    if compute_stats is not None:
+        report["compute_stats"] = compute_stats
     with open(path, "w") as f:
         json.dump(report, f, indent=2, default=str)
     print(f"\nReport saved → {path.resolve()}")

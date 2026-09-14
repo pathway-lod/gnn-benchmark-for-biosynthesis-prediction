@@ -9,7 +9,8 @@ Baseline (all defaults):
   HeteroSAGE · 2 layers · 128-dim · dot decoder · 200 epochs · seed 42
   Taxa split · remove Pathway edges · remove Organism nodes · disjoint_train_ratio=0.2 · no catalyzed_by
   MAP4 conversion fingerprints (3072-dim) · ESM-C protein embeddings (960-dim)
-  Expected: val P-H@50 ≈ 0.115  test P-H@50 ≈ 0.060  CP-AUC ≈ 0.90
+  Note: best results use --num-layers 1 --remove-organism-nodes
+  Expected (1L, no organisms, seed 42): val P-H@50 ≈ 0.175  test P-H@50 ≈ 0.13
 
 Metrics:
   P-H@50   PRIMARY   fraction of reactions where true catalyst is in top-50 of 8,445
@@ -36,9 +37,12 @@ import torch.nn.functional as F
 
 from dataset import load_data
 from metrics import evaluate_cp_auc, evaluate_random_neg_auc, protein_hits_at_k
-from models import build_model
+from models_ import build_model
 from report import TeeLogger, collect_dataset_stats, collect_model_stats, save_report
 from utils import collect_all_pairs, set_seed, sample_training_negatives
+
+
+from build_clean_ctx import build_clean_ctx, randomize_zero_features
 
 RUNS_DIR = Path(__file__).parent.parent / "runs"
 
@@ -60,16 +64,27 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--no-embeddings", dest="use_embeddings", action="store_false", default=True,
                     help="Replace pre-computed embeddings with random features (structural baseline)")
 
-    # Graph ablations
+    # Graph ablations (shortcut control)
+    ap.add_argument("--disjoint-train-ratio", type=float, default=0.2,
+                    help="Fraction of train positives withheld from MP graph (default 0.2). "
+                         "Set to 0 to disable (re-introduces 1-hop shortcut).")
+    ap.add_argument("--keep-pathways", dest="keep_pathways", action="store_true", default=False,
+                    help="Keep is_part_of Pathway edges in the MP graph (re-introduces co-membership shortcut).")
+    ap.add_argument("--keep-catalyzed-by", dest="keep_catalyzed_by", action="store_true", default=False,
+                    help="Keep (Interaction, catalyzed_by, Protein) reverse edges (re-introduces 2-hop shortcut).")
     ap.add_argument("--ec-features", dest="ec_features", action="store_true", default=False,
                     help="Append 237-dim EC one-hot to Interaction nodes. "
                          "WARNING: causes ~80%% val→test gap — ablation only.")
+    ap.add_argument("--split-type", dest="split_type",
+                    choices=["taxa", "pathway", "random"], default="taxa",
+                    help="Holdout strategy: 'taxa' (species holdout, default), "
+                         "'pathway' (pathway holdout), or 'random' (random edge split).")
     ap.add_argument("--remove-gene-organism-edges", dest="remove_gene_organism_edges",
                     action="store_true", default=False)
-    ap.add_argument("--keep-organism", dest="remove_organism",
-                    action="store_false", default=True,
-                    help="Keep the Organism node store and its edges (removed by "
-                         "default, along with all edges touching it)")
+    ap.add_argument("--remove-organism-nodes", dest="remove_organism_nodes",
+                    action="store_true", default=False,
+                    help="Remove all Organism nodes and edges from the MP graph "
+                         "(pure-biochemistry baseline, no species topology).")
     ap.add_argument("--remove-currency-metabolites", dest="remove_currency_metabolites",
                     action="store_true", default=False)
     ap.add_argument("--remove-all-metabolites", dest="remove_all_metabolites",
@@ -94,6 +109,25 @@ def get_args() -> argparse.Namespace:
                          "Required for healthy CP-AUC — trains the protein-ranking direction.")
     ap.add_argument("--early-stop-patience", type=int, default=300,
                     help="Stop if val P-H@50 has not improved in this many epochs (0=disable)")
+    ap.add_argument("--lr-scheduler", choices=["none", "cosine", "plateau", "step"], default="none",
+                    help="LR schedule: 'cosine' (anneal to 0 over --epochs), "
+                         "'plateau' (halve lr when val_loss stalls for --lr-patience epochs), "
+                         "'step' (multiply by --lr-gamma every --lr-step-size epochs), "
+                         "or 'none' (default, constant lr)")
+    ap.add_argument("--lr-step-size", type=int, default=50,
+                    help="Epochs between decays for --lr-scheduler step")
+    ap.add_argument("--lr-gamma", type=float, default=0.5,
+                    help="Decay factor for --lr-scheduler step/plateau")
+    ap.add_argument("--lr-patience", type=int, default=30,
+                    help="Epochs without val_loss improvement before --lr-scheduler plateau decays")
+    ap.add_argument("--neg-pool", choices=["all", "catalyzed"], default="all",
+                    help="Pool of Conversion reactions to draw (Protein, Conversion_random) training "
+                         "negatives from. 'all' (default): the full ~19,927-reaction Conversion pool, "
+                         "~77%% of which have no curated catalyst at all — sampling one of those as a "
+                         "negative is a closed-world assumption that may just be a missing label, not "
+                         "a true negative. 'catalyzed': restrict to the ~4,572 reactions that do have a "
+                         "known catalyst, removing that ambiguity (evaluation is unaffected either way, "
+                         "since it only ever queries catalyzed reactions).")
 
     # Logging
     ap.add_argument("--log-every", type=int, default=5)
@@ -107,11 +141,16 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--gnn-name", type=str, default="sage",
                     help="GNN architecture name (for W&B logging only; edit models.py to implement)")
 
+    ap.add_argument("--data-type", type=str, choices=["clean", "mean", "random"], default="clean",
+                    help="Which build_clean_ctx.py variant to use: 'clean' (drop only), "
+                         "'mean' or 'random' (also impute remaining zero-x rows, see "
+                         "randomize_zero_features)")
+
 
     return ap.parse_args()
 
 
-def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs, grad_clip=0.5):
+def _train_step(model, optimizer, ctx, data, conv_idxs, neg_k, rng, neg_k_cp, exclude_pairs, grad_clip=0.5):
     model.train()
     optimizer.zero_grad()
 
@@ -119,7 +158,7 @@ def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs
     pos_ei = data[ctx.target_edge].edge_label_index[:, lbl == 1]
 
     eli, labels = sample_training_negatives(
-        pos_ei, ctx.conv_idxs, neg_k, rng, ctx.device,
+        pos_ei, conv_idxs, neg_k, rng, ctx.device,
         n_prot=data[ctx.src_type].num_nodes,
         neg_k_cp=neg_k_cp,
         exclude_pairs=exclude_pairs,
@@ -162,20 +201,59 @@ def run(args, run_dir: Path) -> dict:
     ctx = load_data(
         data_dir=args.data_dir,
         random_seed=args.seed,
-        remove_is_part_of=True,
+        remove_is_part_of=not args.keep_pathways,
         embedded_only_ranking=True,
-        disjoint_train_ratio=0.2,
-        keep_catalyzed_by=False,
+        disjoint_train_ratio=args.disjoint_train_ratio,
+        keep_catalyzed_by=args.keep_catalyzed_by,
         load_ec_embeddings=args.ec_features,
         remove_currency_metabolites=args.remove_currency_metabolites,
         remove_all_metabolites=args.remove_all_metabolites,
         organism_embeddings_path=args.organism_embeddings_path,
         organism_embedding_type=args.organism_embedding_type,
         remove_gene_organism_edges=args.remove_gene_organism_edges,
-        remove_organism=args.remove_organism,
+        remove_organism=args.remove_organism_nodes,
         download=args.download,
         print_summary=args.print_dataset_summary,
     )
+
+
+    if args.data_type == "clean":   
+        ctx = build_clean_ctx(ctx)
+    elif args.data_type == "mean":
+        ctx = build_clean_ctx(ctx)
+        ctx = randomize_zero_features(ctx, strategy="mean")
+    elif args.data_type == "random":
+        ctx = build_clean_ctx(ctx)
+        ctx = randomize_zero_features(ctx, strategy="random")
+
+    # ctx = randomize_zero_features(ctx, strategy="mean") 
+    print(f"\n -------- CLEAN DATA --------- \n")
+    print("Node types:")
+    for nt in ctx.train_data.node_types:
+        store = ctx.train_data[nt]
+        x_shape = tuple(store.x.shape) if "x" in store else None
+        print(f"  {nt:<12}  num_nodes={store.num_nodes:>9,d}  x={x_shape}")
+    print("Edge types:")
+    for et in ctx.train_data.edge_types:
+        store = ctx.train_data[et]
+        print(f"  {str(et):<50}  num_edges={store.num_edges:>10,d}")
+    print()
+
+    print(f"Training.......")
+    for nt, x in ctx.train_data.x_dict.items():
+        n_zero = (x.abs().sum(dim=1) == 0).sum().item()
+        print(f"{nt}: {n_zero}/{x.shape[0]} zero-input rows ({100*n_zero/x.shape[0]:.1f}%)")
+    print("Validation........")
+    for nt, x in ctx.val_data.x_dict.items():
+        n_zero = (x.abs().sum(dim=1) == 0).sum().item()
+        print(f"{nt}: {n_zero}/{x.shape[0]} zero-input rows ({100*n_zero/x.shape[0]:.1f}%)")
+    print(f"Test............")
+    for nt, x in ctx.test_data.x_dict.items():
+        n_zero = (x.abs().sum(dim=1) == 0).sum().item()
+        print(f"{nt}: {n_zero}/{x.shape[0]} zero-input rows ({100*n_zero/x.shape[0]:.1f}%)")
+
+
+
 
     model = build_model(
         ctx, gnn_name = args.gnn_name, 
@@ -195,29 +273,55 @@ def run(args, run_dir: Path) -> dict:
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
     )
+
+    scheduler = None
+    if args.lr_scheduler == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    elif args.lr_scheduler == "step":
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma,
+        )
+    elif args.lr_scheduler == "plateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=args.lr_gamma, patience=args.lr_patience,
+        )
+
     hparams = {**vars(args), "device": str(ctx.device), "gpu": gpu if torch.cuda.is_available() else "CPU"}
 
     exclude_pairs = collect_all_pairs(ctx)
     rng           = np.random.default_rng(args.seed)
 
+    if args.neg_pool == "catalyzed":
+        train_conv_idxs = list(ctx.all_catalyst_lookup.keys())
+        print(f"  neg_pool=catalyzed: sampling (Protein, Conversion_random) negatives from "
+              f"{len(train_conv_idxs):,}/{len(ctx.conv_idxs):,} Conversion reactions with a known catalyst")
+    else:
+        train_conv_idxs = ctx.conv_idxs # previous-default
+
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
+    t_train_start = time.time()
+    run_tag    = Path(args.run_name).name
+    best_ph50  = -1.0
+    best_epoch = 0
+    best_path  = run_dir / f"{run_tag}_best.pt"
+    no_improve = 0
+
     latest_path: Path | None = None
-    best_ph50   = -1.0
-    best_epoch  = 0
-    best_path: Path | None = None
-    no_improve  = 0
 
     history: dict = {k: [] for k in [
-        "train_loss", "val_ph10", "val_ph50", "val_cp_auc", "val_cp_ap", "val_loss", "test_loss",
+        "train_loss", "val_ph10", "val_ph50", "val_cp_auc", "val_cp_ap", "val_loss", "test_loss", "lr",
     ]}
 
     print(f"{'Epoch':>6}  {'loss':>7} {'val_loss':>7} {'tst_loss':>8} "
-          f"{'P-H@10':>7}  {'P-H@50':>7}  {'CP-AUC':>7}  {'time':>6}")
+          f"{'P-H@10':>7}  {'P-H@50':>7}  {'CP-AUC':>7}  {'lr':>9}  {'time':>6}")
     print("─" * 66)
 
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
         loss, diverged = _train_step(
-            model, optimizer, ctx, ctx.train_data,
+            model, optimizer, ctx, ctx.train_data, train_conv_idxs,
             args.neg_k, rng, args.neg_k_cp, exclude_pairs,
             grad_clip=args.grad_clip,
         )
@@ -228,7 +332,15 @@ def run(args, run_dir: Path) -> dict:
         val_cp_auc, val_cp_ap, val_loss, test_loss, ph10, ph50 = _evaluate(
             model.gnn, model.predictor, ctx, args, epoch, exclude_pairs,
         )
+
+        if scheduler is not None:
+            if args.lr_scheduler == "plateau":
+                scheduler.step(val_loss)
+            else:
+                scheduler.step()
+
         dt = time.time() - t0
+        cur_lr = optimizer.param_groups[0]["lr"]
 
         history["train_loss"].append(loss)
         history["val_ph10"].append(ph10)
@@ -237,10 +349,11 @@ def run(args, run_dir: Path) -> dict:
         history["val_cp_ap"].append(val_cp_ap)
         history["val_loss"].append(val_loss)
         history["test_loss"].append(test_loss)
+        history["lr"].append(cur_lr)
 
         if epoch % args.log_every == 0:
             print(f"{epoch:>6d}  {loss:>7.4f}  {val_loss:>7.4f}  {test_loss:>8.4f} "
-                  f"{ph10:>7.4f}  {ph50:>7.4f}  {val_cp_auc:>7.4f}  {dt:>5.1f}s")
+                  f"{ph10:>7.4f}  {ph50:>7.4f}  {val_cp_auc:>7.4f}  {cur_lr:>9.2e}  {dt:>5.1f}s")
 
         if latest_path is not None and latest_path.exists():
             latest_path.unlink()
@@ -248,6 +361,7 @@ def run(args, run_dir: Path) -> dict:
         torch.save({
             "epoch": epoch, "loss": loss, "val_ph50": ph50,
             "model_state": model.state_dict(), "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict() if scheduler is not None else None,
             "hparams": hparams,
         }, latest_path)
 
@@ -297,6 +411,19 @@ def run(args, run_dir: Path) -> dict:
             f"{split_name}_loss":   split_loss,
         })
 
+    total_train_time = time.time() - t_train_start
+    peak_gpu_mb = (
+        torch.cuda.max_memory_allocated() / 1e6 if torch.cuda.is_available() else 0.0
+    )
+    compute_stats = {
+        "total_train_time_s": round(total_train_time, 1),
+        "device": str(ctx.device),
+        "gpu": gpu if torch.cuda.is_available() else "CPU",
+        "peak_gpu_memory_mb": round(peak_gpu_mb, 1),
+        "epochs_run": best_epoch + (args.early_stop_patience if no_improve >= args.early_stop_patience else args.epochs),
+    }
+
+
     report_path = run_dir / f"report_{args.gnn_name}_epoch{best_epoch:03d}.json"
     save_report(
         report_path,
@@ -304,6 +431,7 @@ def run(args, run_dir: Path) -> dict:
         dataset_stats=collect_dataset_stats(ctx),
         model_stats=collect_model_stats(model.gnn, model.predictor, ctx),
         results=results,
+        compute_stats=compute_stats,
     )
 
     print(f"Checkpoint → {best_path}")

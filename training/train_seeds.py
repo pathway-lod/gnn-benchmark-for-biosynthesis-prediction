@@ -11,7 +11,7 @@ Usage:
     python train_seeds.py --seeds 42,0,1,2,3       # explicit seed list
     python train_seeds.py --hidden-dim 256 --num-layers 3  # larger model
 
-All other train.py flags are accepted and passed through to each seed run.
+All other train_.py flags are accepted and passed through to each seed run.
 Each seed lands in runs/<run-name>/<gnn-name>_L<num-layers>_h<hidden-dim>_<decoder>_lr<lr>/seed_<s>/;
 the aggregated summary is saved to runs/<run-name>/seeds_summary_<config-tag>.json
 (and again under runs/<run-name>/<config-tag>/).
@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-RUNS_DIR = Path(__file__).parent.parent / "runs"
+RUNS_DIR = Path(__file__).parent.parent / "runs_clean"
 
 TRACKED_METRICS = [
     "val_ph50", "val_ph10", "val_ph1", "val_ph5",
@@ -84,7 +84,7 @@ def run_seed(seed: int, run_name: str, extra_args: list[str], config_tag: str,
              print_dataset_summary: bool) -> Path:
     """Launch a single-seed training subprocess. Returns run_dir (<run-name>/<config_tag>/seed_<s>)."""
     cmd = [
-        sys.executable, str(Path(__file__).parent / "train.py"),
+        sys.executable, str(Path(__file__).parent / "train_.py"),
         "--seed", str(seed),
         "--run-name", run_name,
     ] + extra_args
@@ -143,7 +143,7 @@ def print_summary(summary: dict) -> None:
         if m not in summary:
             continue
         s = summary[m]
-        print(f"  {m:<20}  {s['mean']:>8.4f}  {s['std']:>8.4f}  {s['n']}")
+        print(f"  {m:<20}  {s['mean']:>8.3f}  {s['std']:>8.3f}  {s['n']}")
     print()
 
 
