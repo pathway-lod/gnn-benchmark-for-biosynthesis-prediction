@@ -353,6 +353,12 @@ def load_data(
             print(f"  Blocked {len(currency_idx)} currency metabolite nodes, "
                   f"removed {n_removed:,} edges")
 
+    # remove edge (Metabolite organism Organism)
+    met_org_key = ("Metabolite", "organism", "Organism")
+    if met_org_key in data.edge_types:
+        del data[met_org_key]
+        print("  Removed (Metabolite, organism, Organism) edges")
+
     # ── Taxa-holdout split ────────────────────────────────────────────────────
     print("Loading taxa split …")
     splits_taxa = torch.load(data_dir / "splits_taxa.pt", weights_only=False)
