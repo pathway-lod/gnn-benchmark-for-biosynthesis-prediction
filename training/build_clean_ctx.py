@@ -2,7 +2,7 @@
 from a GraphContext, with every index-referencing field correctly remapped.
 """
 import torch
-from dataset import GraphContext
+from dataset import GraphContext, load_data
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -179,8 +179,50 @@ def randomize_zero_features(clean_ctx: GraphContext, node_types=("GeneProduct", 
     return clean_ctx
 
 
+def load_ctx_for_run(hp: dict, data_dir, **overrides) -> GraphContext:
+    """Rebuild the graph a train.py run used, from its saved hparams (vars(args)).
+
+    Runs from before the data-cleaning merge have no data_type /
+    remove_metabolite_organism_edges entries and rebuild as the raw graph.
+    """
+    hp = {**hp, **overrides}
+    ctx = load_data(
+        data_dir=data_dir,
+        random_seed=hp.get("seed", 42),
+        remove_is_part_of=not hp.get("keep_pathways", False),
+        embedded_only_ranking=True,
+        disjoint_train_ratio=hp.get("disjoint_train_ratio", 0.2),
+        keep_catalyzed_by=hp.get("keep_catalyzed_by", False),
+        load_ec_embeddings=hp.get("ec_features", False),
+        remove_currency_metabolites=hp.get("remove_currency_metabolites", False),
+        remove_all_metabolites=hp.get("remove_all_metabolites", False),
+        organism_embeddings_path=hp.get("organism_embeddings_path"),
+        organism_embedding_type=hp.get("organism_embedding_type", "mds"),
+        remove_gene_organism_edges=hp.get("remove_gene_organism_edges", False),
+        remove_organism_nodes=hp.get("remove_organism_nodes", False),
+        remove_metabolite_organism_edges=hp.get("remove_metabolite_organism_edges", False),
+        split_type=hp.get("split_type", "taxa"),
+        species_pool=hp.get("species_pool", False),
+        download=hp.get("download", False),
+        print_summary=hp.get("print_dataset_summary", False),
+    )
+    data_type = hp.get("data_type", "raw")
+    if data_type != "raw":
+        ctx = build_clean_ctx(ctx)
+        if data_type in ("mean", "random"):
+            ctx = randomize_zero_features(ctx, strategy=data_type)
+    return ctx
+
+
+def interaction_node_ids(nodes_df, data_type: str = "raw") -> list[str]:
+    """Interaction node_ids in the order of the ctx's Interaction indices."""
+    inter = nodes_df[nodes_df.node_type == "Interaction"]
+    if data_type != "raw":
+        inter = inter[inter["interaction_subtype"].fillna("") == "Conversion"]
+    return inter["node_id"].tolist()
+
+
 if __name__ == "__main__":
-    from dataset import load_data
     from models import build_model
 
     ctx = load_data(print_summary=False)

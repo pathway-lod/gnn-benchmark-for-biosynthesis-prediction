@@ -44,7 +44,7 @@ import torch
 REPO = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO / "training"))
 
-from dataset import load_data
+from build_clean_ctx import interaction_node_ids, load_ctx_for_run
 from metrics import protein_hits_at_k
 from models import build_model
 from utils import set_seed
@@ -181,8 +181,9 @@ def main():
     rhea_dir.mkdir(parents=True, exist_ok=True)
 
     # ── Load run config ────────────────────────────────────────────────────────
-    report = json.loads((run_dir / "report.json").read_text())
-    hp = report["hparams"]
+    report_files = sorted(run_dir.glob("report*.json"))
+    assert report_files, f"No report*.json in {run_dir}"
+    hp = json.loads(report_files[-1].read_text())["hparams"]
     seed = hp["seed"]
 
     print(f"Run      : {run_dir}")
@@ -228,18 +229,7 @@ def main():
     print()
     print("── Loading data & model ───────────────────────────────────────────────────")
     set_seed(seed)
-    ctx = load_data(
-        data_dir=str(data_dir),
-        random_seed=seed,
-        split_type=hp.get("split_type", "taxa"),
-        species_pool=hp.get("species_pool", False),
-        remove_is_part_of=True,
-        embedded_only_ranking=True,
-        disjoint_train_ratio=hp.get("disjoint_train_ratio", 0.2),
-        keep_catalyzed_by=hp.get("keep_catalyzed_by", False),
-        remove_organism_nodes=hp.get("remove_organism_nodes", False),
-        download=False,
-    )
+    ctx = load_ctx_for_run(hp, str(data_dir), download=False)
 
     ckpt_files = sorted(run_dir.glob("*_best.pt"))
     assert ckpt_files, f"No *_best.pt checkpoint in {run_dir}"
@@ -247,11 +237,13 @@ def main():
 
     model = build_model(
         ctx,
+        gnn_name=hp.get("gnn_name", "sage"),
         hidden_dim=hp["hidden_dim"],
         num_layers=hp["num_layers"],
         decoder=hp["decoder"],
         dropout=hp["dropout"],
         random_seed=seed,
+        use_norm=hp.get("layer_norm", False),
     )
     model.load_state_dict(ckpt_data["model_state"])
     model.eval()
@@ -279,12 +271,11 @@ def main():
           f"covering {len({i for s in uniprot_to_idx.values() for i in s}):,} protein nodes")
 
     # Reaction: node_idx → MetaCyc local_id
-    inter_rows  = nodes_df[nodes_df.node_type == "Interaction"].reset_index(drop=True)
-    inter_local = [iri.split("/")[-1] for iri in inter_rows.node_id]
+    inter_ids   = interaction_node_ids(nodes_df, hp.get("data_type", "raw"))
+    inter_local = [iri.split("/")[-1] for iri in inter_ids]
 
-    # Iterate over all Interaction nodes; Rhea lookup only for Conversion-relevant ones.
-    # PyG heterogeneous graphs index each type from 0; reset_index gives us that mapping.
-    conv_idxs_list = list(range(len(inter_rows)))
+    # Position i is the ctx's Interaction index (Conversion-only for cleaned-graph runs).
+    conv_idxs_list = list(range(len(inter_ids)))
 
     # Map global Interaction-node idx → MetaCyc local id
     inter_idx_to_local = {i: inter_local[i] for i in conv_idxs_list}

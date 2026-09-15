@@ -23,7 +23,7 @@ NODE_COLOR = {
 
 from pathlib import Path
 from metrics import evaluate_cp_auc, evaluate_random_neg_auc, protein_hits_at_k
-from build_clean_ctx import build_clean_ctx
+from build_clean_ctx import load_ctx_for_run
 
 RUNS_DIR = Path(__file__).parent.parent / "runs_clean"
 PLOTS_DIR = Path(__file__).parent / "plots_clean"
@@ -468,42 +468,13 @@ def run(args, run_dir: Path) -> dict:
     print(f"  Device: {'cuda' if torch.cuda.is_available() else 'cpu'}  ({gpu})")
     print()
 
-    ctx = load_data(
-        data_dir=args.data_dir,
-        random_seed=args.seed,
-        remove_is_part_of=True,
-        embedded_only_ranking=True,
-        disjoint_train_ratio=0.2,
-        keep_catalyzed_by=False,
-        load_ec_embeddings=args.ec_features,
-        remove_currency_metabolites=args.remove_currency_metabolites,
-        remove_all_metabolites=args.remove_all_metabolites,
-        organism_embeddings_path=args.organism_embeddings_path,
-        organism_embedding_type=args.organism_embedding_type,
-        remove_gene_organism_edges=args.remove_gene_organism_edges,
-        remove_organism=args.remove_organism,
-        download=args.download,
-        print_summary=args.print_dataset_summary,
-    )
-
-    ctx = build_clean_ctx(ctx)    
-    print(f"\n -------- CLEAN DATA --------- \n")
-    print("Node types:")
-    for nt in ctx.train_data.node_types:
-        store = ctx.train_data[nt]
-        x_shape = tuple(store.x.shape) if "x" in store else None
-        print(f"  {nt:<12}  num_nodes={store.num_nodes:>9,d}  x={x_shape}")
-    print("Edge types:")
-    for et in ctx.train_data.edge_types:
-        store = ctx.train_data[et]
-        print(f"  {str(et):<50}  num_edges={store.num_edges:>10,d}")
-    print()
-
+    ctx = load_ctx_for_run(vars(args), args.data_dir)
 
     model = build_model(
-        ctx, gnn_name = args.gnn_name, 
+        ctx, gnn_name=args.gnn_name,
         hidden_dim=args.hidden_dim, num_layers=args.num_layers,
         decoder=args.decoder, dropout=args.dropout, random_seed=args.seed,
+        use_norm=args.layer_norm,
     )
 
     if any(run_dir.glob(f"{args.gnn_name}_L{args.num_layers}_latest_epoch*.pt")):

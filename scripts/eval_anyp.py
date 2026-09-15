@@ -18,7 +18,7 @@ from pathlib import Path
 import torch
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "training"))
-from dataset import load_data
+from build_clean_ctx import load_ctx_for_run
 from metrics import protein_hits_at_k
 from models import build_model
 from utils import set_seed
@@ -46,14 +46,13 @@ def main():
     args = get_args()
     k_list = tuple(int(k) for k in args.k_list.split(","))
 
-    run_dir  = RUNS_DIR / args.run_name
-    run_tag  = Path(args.run_name).name
-    ckpt     = run_dir / f"{run_tag}_best.pt"
-    if not ckpt.exists():
-        print(f"ERROR: checkpoint not found: {ckpt}")
+    run_dir = RUNS_DIR / args.run_name
+    ckpts   = sorted(run_dir.glob("*_best.pt"))
+    if not ckpts:
+        print(f"ERROR: no *_best.pt checkpoint in {run_dir}")
         sys.exit(1)
 
-    ckpt_data = torch.load(ckpt, weights_only=False)
+    ckpt_data = torch.load(ckpts[0], weights_only=False)
     hp = ckpt_data.get("hparams", {})
     num_layers = args.num_layers or hp.get("num_layers", 2)
     hidden_dim = args.hidden_dim  or hp.get("hidden_dim", 128)
@@ -66,20 +65,12 @@ def main():
     print(f"Organisms: {'removed' if remove_org else 'included'}")
     print()
 
-    ctx = load_data(
-        data_dir=args.data_dir,
-        random_seed=seed,
-        remove_is_part_of=True,
-        embedded_only_ranking=True,
-        disjoint_train_ratio=hp.get("disjoint_train_ratio", 0.2),
-        keep_catalyzed_by=hp.get("keep_catalyzed_by", False),
-        remove_organism_nodes=remove_org,
-        download=False,
-    )
+    ctx = load_ctx_for_run(hp, args.data_dir, remove_organism_nodes=remove_org, download=False)
 
-    model = build_model(ctx, hidden_dim=hidden_dim, num_layers=num_layers,
+    model = build_model(ctx, gnn_name=hp.get("gnn_name", "sage"),
+                        hidden_dim=hidden_dim, num_layers=num_layers,
                         decoder=hp.get("decoder", "dot"), dropout=hp.get("dropout", 0.3),
-                        random_seed=seed)
+                        random_seed=seed, use_norm=hp.get("layer_norm", False))
     model.load_state_dict(ckpt_data["model_state"])
     model.eval()
 

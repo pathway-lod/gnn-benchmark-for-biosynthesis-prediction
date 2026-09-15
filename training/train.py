@@ -6,11 +6,12 @@ Split: taxa holdout — val/test organisms are held out from training.
 Graph: PlantMetWiki knowledge graph, 424 plant species.
 
 Baseline (all defaults):
-  HeteroSAGE · 2 layers · 128-dim · dot decoder · 200 epochs · seed 42
-  Taxa split · remove Pathway edges · remove Organism nodes · disjoint_train_ratio=0.2 · no catalyzed_by
+  HeteroSAGE · 2 layers · 128-dim · per-layer LayerNorm · dot decoder · 200 epochs · seed 42
+  Taxa split · cleaned graph (alias Metabolite/GeneProduct and blank-subtype Interaction nodes dropped)
+  remove Pathway edges · remove (Metabolite, organism, Organism) edges
+  disjoint_train_ratio=0.2 · no catalyzed_by
   MAP4 conversion fingerprints (3072-dim) · ESM-C protein embeddings (960-dim)
-  Note: best results use --num-layers 1 --remove-organism-nodes
-  Expected (1L, no organisms, seed 42): val P-H@50 ≈ 0.175  test P-H@50 ≈ 0.13
+  Pre-merge configuration: --data-type raw --no-layer-norm --no-remove-metabolite-organism-edges
 
 Metrics:
   P-H@50   PRIMARY   fraction of reactions where true catalyst is in top-50 of 8,445
@@ -35,12 +36,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from dataset import load_data
+from build_clean_ctx import load_ctx_for_run
 from metrics import evaluate_cp_auc, evaluate_random_neg_auc, protein_hits_at_k
 from models import build_model
 from report import TeeLogger, collect_dataset_stats, collect_model_stats, save_report
 from utils import collect_all_pairs, set_seed, sample_training_negatives
-from build_clean_ctx import build_clean_ctx, randomize_zero_features
 
 RUNS_DIR = Path(__file__).parent.parent / "runs"
 
@@ -143,15 +143,19 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--gnn-name", type=str, default="sage",
                     help="GNN architecture name (for W&B logging only; edit models.py to implement)")
 
-    ap.add_argument("--data-type", type=str, choices=["raw", "clean", "mean", "random"], default="raw",
-                    help="Graph variant: 'raw' (default, the graph behind all reported results), "
-                         "'clean' (build_clean_ctx: drop alias Metabolite/GeneProduct and "
-                         "blank-subtype Interaction nodes), 'mean' or 'random' (clean, then impute "
-                         "remaining zero-x rows, see randomize_zero_features)")
-    ap.add_argument("--layer-norm", dest="layer_norm", action="store_true", default=False,
-                    help="Per-node-type LayerNorm after each GNN layer (sage/hgt/gat/rgcn).")
+    ap.add_argument("--data-type", type=str, choices=["raw", "clean", "mean", "random"], default="clean",
+                    help="Graph variant: 'clean' (default; build_clean_ctx drops alias Metabolite/"
+                         "GeneProduct and blank-subtype Interaction nodes), 'raw' (the unmodified "
+                         "graph used before the data-cleaning merge), 'mean' or 'random' (clean, "
+                         "then impute remaining zero-x rows, see randomize_zero_features)")
+    ap.add_argument("--layer-norm", dest="layer_norm", action=argparse.BooleanOptionalAction,
+                    default=True,
+                    help="Per-node-type LayerNorm after each GNN layer (sage/hgt/gat/rgcn); "
+                         "on by default, disable with --no-layer-norm.")
     ap.add_argument("--remove-metabolite-organism-edges", dest="remove_metabolite_organism_edges",
-                    action="store_true", default=False)
+                    action=argparse.BooleanOptionalAction, default=True,
+                    help="Drop (Metabolite, organism, Organism) edges; on by default, keep them "
+                         "with --no-remove-metabolite-organism-edges.")
 
     return ap.parse_args()
 
@@ -204,32 +208,9 @@ def run(args, run_dir: Path) -> dict:
     print(f"  Device: {'cuda' if torch.cuda.is_available() else 'cpu'}  ({gpu})")
     print()
 
-    ctx = load_data(
-        data_dir=args.data_dir,
-        random_seed=args.seed,
-        remove_is_part_of=not args.keep_pathways,
-        embedded_only_ranking=True,
-        disjoint_train_ratio=args.disjoint_train_ratio,
-        keep_catalyzed_by=args.keep_catalyzed_by,
-        load_ec_embeddings=args.ec_features,
-        remove_currency_metabolites=args.remove_currency_metabolites,
-        remove_all_metabolites=args.remove_all_metabolites,
-        organism_embeddings_path=args.organism_embeddings_path,
-        organism_embedding_type=args.organism_embedding_type,
-        remove_gene_organism_edges=args.remove_gene_organism_edges,
-        remove_organism_nodes=args.remove_organism_nodes,
-        remove_metabolite_organism_edges=args.remove_metabolite_organism_edges,
-        split_type=args.split_type,
-        species_pool=args.species_pool,
-        download=args.download,
-        print_summary=args.print_dataset_summary,
-    )
-
+    ctx = load_ctx_for_run(vars(args), args.data_dir)
 
     if args.data_type != "raw":
-        ctx = build_clean_ctx(ctx)
-        if args.data_type in ("mean", "random"):
-            ctx = randomize_zero_features(ctx, strategy=args.data_type)
         print(f"\nGraph variant '{args.data_type}':")
         for nt, x in ctx.train_data.x_dict.items():
             n_zero = int((x.abs().sum(dim=1) == 0).sum())

@@ -25,7 +25,7 @@ import torch
 REPO = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO / "training"))
 
-from dataset import load_data
+from build_clean_ctx import interaction_node_ids, load_ctx_for_run
 from models import build_model
 from metrics import _score_all
 
@@ -60,7 +60,7 @@ def per_reaction_ranks(gnn, predictor, ctx):
     n_total = pos_ei.shape[1]
 
     prot_mask = ctx.embedded_protein_mask
-    pool_idx  = torch.where(prot_mask)[0]
+    pool_idx  = torch.where(prot_mask.to(pos_ei.device))[0]
     pool_embs = z_src[pool_idx]          # [n_pool, dim]
     n_pool    = pool_embs.shape[0]
 
@@ -76,7 +76,7 @@ def per_reaction_ranks(gnn, predictor, ctx):
     dst_embs   = z_dst[pos_ei[1]]                           # [n_total, dim]
     all_scores = _score_all(predictor, pool_embs, dst_embs) # [n_pool, n_total]
 
-    ranks = torch.full((n_total,), n_pool + 1, dtype=torch.long)
+    ranks = torch.full((n_total,), n_pool + 1, dtype=torch.long, device=pos_ei.device)
     valid = torch.where(in_pool)[0]
     if valid.numel() > 0:
         rows        = pos_src_pool[valid]
@@ -105,41 +105,46 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", nargs="+", type=int, default=[42, 0, 1])
     ap.add_argument("--k", type=int, default=50)
+    ap.add_argument("--runs-dir", type=Path, default=RUNS_DIR,
+                    help="Config directory containing seed_<s>/ run directories")
     ap.add_argument("--no-plot", action="store_true")
     args = ap.parse_args()
 
-    print("Loading dataset …")
-    ctx = load_data(
-        data_dir=DATA_DIR,
-        split_type="ath_pathway",
-        species_pool=True,
-        download=True,
-        print_summary=False,
-    )
-
     print("Loading KG for pathway structure …")
     heterodata = torch.load(DATA_DIR / "heterodata.pt", weights_only=False)
-    pathway_map = build_pathway_map(heterodata)
-    print(f"  Reaction→pathway entries: {sum(len(v) for v in pathway_map.values()):,}")
+    raw_pathway_map = build_pathway_map(heterodata)
+    print(f"  Reaction→pathway entries: {sum(len(v) for v in raw_pathway_map.values()):,}")
 
     # ── Collect per-reaction ranks across seeds ────────────────────────────────
-    all_ranks_by_inter = defaultdict(list)   # inter_idx → [rank_seed1, ...]
+    # Keyed by Interaction node_id: cleaned-graph runs re-index Interaction nodes.
+    all_ranks_by_inter = defaultdict(list)   # node_id → [rank_seed1, ...]
     in_pool_by_inter   = {}
+    pathway_map        = None
 
     for seed in args.seeds:
-        ckpt_dir = RUNS_DIR / f"seed_{seed}"
+        ckpt_dir = args.runs_dir / f"seed_{seed}"
         ckpt_files = sorted(ckpt_dir.glob("*best*.pt"))
         if not ckpt_files:
             print(f"  [skip] seed {seed}: no checkpoint found in {ckpt_dir}")
             continue
         ckpt_path = ckpt_files[0]
         print(f"\nSeed {seed}: loading {ckpt_path.name}")
+        ckpt = torch.load(ckpt_path, weights_only=False)
+        hp = ckpt.get("hparams", {})
+
+        ctx = load_ctx_for_run(hp, DATA_DIR, seed=seed, split_type="ath_pathway",
+                               species_pool=True, download=True)
+        if pathway_map is None:
+            raw_ids = interaction_node_ids(ctx.nodes_df, "raw")
+            pathway_map = {raw_ids[i]: pw for i, pw in raw_pathway_map.items()}
+        inter_ids = interaction_node_ids(ctx.nodes_df, hp.get("data_type", "raw"))
 
         model = build_model(
-            ctx, gnn_name="sage", hidden_dim=128, num_layers=2,
-            decoder="dot", dropout=0.3, random_seed=seed,
+            ctx, gnn_name=hp.get("gnn_name", "sage"), hidden_dim=hp.get("hidden_dim", 128),
+            num_layers=hp.get("num_layers", 2), decoder=hp.get("decoder", "dot"),
+            dropout=hp.get("dropout", 0.3), random_seed=seed,
+            use_norm=hp.get("layer_norm", False),
         )
-        ckpt = torch.load(ckpt_path, weights_only=False)
         model.load_state_dict(ckpt["model_state"])
         model.eval()
 
@@ -148,8 +153,9 @@ def main():
               f"|  In-pool: {in_pool.sum()}")
 
         for ii, rk, ip in zip(inter_idx, ranks, in_pool):
-            all_ranks_by_inter[int(ii)].append(int(rk))
-            in_pool_by_inter[int(ii)] = bool(ip)
+            nid = inter_ids[int(ii)]
+            all_ranks_by_inter[nid].append(int(rk))
+            in_pool_by_inter[nid] = bool(ip)
 
     if not all_ranks_by_inter:
         print("No seed results found. Exiting.")
