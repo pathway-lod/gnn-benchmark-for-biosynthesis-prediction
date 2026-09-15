@@ -192,6 +192,7 @@ def load_data(
     load_ec_embeddings: bool = False,
     remove_gene_organism_edges: bool = False,
     remove_organism_nodes: bool = False,
+    remove_metabolite_organism_edges: bool = False,
     organism_embeddings_path: str | Path | None = None,
     organism_embedding_type: str = "mds",
     split_type: str = "taxa",
@@ -232,6 +233,7 @@ def load_data(
         touching it. Drops all taxa information from the graph (pure-biochemistry
         baseline). Mutually exclusive in effect with remove_gene_organism_edges and
         organism_embeddings_path.
+    remove_metabolite_organism_edges : remove (Metabolite, organism, Organism) edges.
     organism_embeddings_path : path to embeddings_organism.pt. Replaces the
         random 64-dim Organism features with taxonomy-aware MDS coordinates.
     organism_embedding_type : "mds" (64-dim) or "multihot" (702-dim lineage).
@@ -364,6 +366,12 @@ def load_data(
                     n_removed += n
             print(f"  Blocked {len(currency_idx)} currency metabolite nodes, "
                   f"removed {n_removed:,} edges")
+
+    if remove_metabolite_organism_edges:
+        met_org_key = ("Metabolite", "organism", "Organism")
+        if met_org_key in data.edge_types:
+            del data[met_org_key]
+            print("  Removed (Metabolite, organism, Organism) edges")
 
     # ── Split loading ─────────────────────────────────────────────────────────
     _split_files = {

@@ -40,6 +40,7 @@ from metrics import evaluate_cp_auc, evaluate_random_neg_auc, protein_hits_at_k
 from models import build_model
 from report import TeeLogger, collect_dataset_stats, collect_model_stats, save_report
 from utils import collect_all_pairs, set_seed, sample_training_negatives
+from build_clean_ctx import build_clean_ctx, randomize_zero_features
 
 RUNS_DIR = Path(__file__).parent.parent / "runs"
 
@@ -110,6 +111,25 @@ def get_args() -> argparse.Namespace:
                          "Required for healthy CP-AUC — trains the protein-ranking direction.")
     ap.add_argument("--early-stop-patience", type=int, default=300,
                     help="Stop if val P-H@50 has not improved in this many epochs (0=disable)")
+    ap.add_argument("--lr-scheduler", choices=["none", "cosine", "plateau", "step"], default="none",
+                    help="LR schedule: 'cosine' (anneal to 0 over --epochs), "
+                         "'plateau' (halve lr when val_loss stalls for --lr-patience epochs), "
+                         "'step' (multiply by --lr-gamma every --lr-step-size epochs), "
+                         "or 'none' (default, constant lr)")
+    ap.add_argument("--lr-step-size", type=int, default=50,
+                    help="Epochs between decays for --lr-scheduler step")
+    ap.add_argument("--lr-gamma", type=float, default=0.5,
+                    help="Decay factor for --lr-scheduler step/plateau")
+    ap.add_argument("--lr-patience", type=int, default=30,
+                    help="Epochs without val_loss improvement before --lr-scheduler plateau decays")
+    ap.add_argument("--neg-pool", choices=["all", "catalyzed"], default="all",
+                    help="Pool of Conversion reactions to draw (Protein, Conversion_random) training "
+                         "negatives from. 'all' (default): the full ~19,927-reaction Conversion pool, "
+                         "~77%% of which have no curated catalyst at all — sampling one of those as a "
+                         "negative is a closed-world assumption that may just be a missing label, not "
+                         "a true negative. 'catalyzed': restrict to the ~4,572 reactions that do have a "
+                         "known catalyst, removing that ambiguity (evaluation is unaffected either way, "
+                         "since it only ever queries catalyzed reactions).")
 
     # Logging
     ap.add_argument("--log-every", type=int, default=5)
@@ -123,11 +143,20 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--gnn-name", type=str, default="sage",
                     help="GNN architecture name (for W&B logging only; edit models.py to implement)")
 
+    ap.add_argument("--data-type", type=str, choices=["raw", "clean", "mean", "random"], default="raw",
+                    help="Graph variant: 'raw' (default, the graph behind all reported results), "
+                         "'clean' (build_clean_ctx: drop alias Metabolite/GeneProduct and "
+                         "blank-subtype Interaction nodes), 'mean' or 'random' (clean, then impute "
+                         "remaining zero-x rows, see randomize_zero_features)")
+    ap.add_argument("--layer-norm", dest="layer_norm", action="store_true", default=False,
+                    help="Per-node-type LayerNorm after each GNN layer (sage/hgt/gat/rgcn).")
+    ap.add_argument("--remove-metabolite-organism-edges", dest="remove_metabolite_organism_edges",
+                    action="store_true", default=False)
 
     return ap.parse_args()
 
 
-def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs, grad_clip=0.5):
+def _train_step(model, optimizer, ctx, data, conv_idxs, neg_k, rng, neg_k_cp, exclude_pairs, grad_clip=0.5):
     model.train()
     optimizer.zero_grad()
 
@@ -135,7 +164,7 @@ def _train_step(model, optimizer, ctx, data, neg_k, rng, neg_k_cp, exclude_pairs
     pos_ei = data[ctx.target_edge].edge_label_index[:, lbl == 1]
 
     eli, labels = sample_training_negatives(
-        pos_ei, ctx.conv_idxs, neg_k, rng, ctx.device,
+        pos_ei, conv_idxs, neg_k, rng, ctx.device,
         n_prot=data[ctx.src_type].num_nodes,
         neg_k_cp=neg_k_cp,
         exclude_pairs=exclude_pairs,
@@ -189,16 +218,32 @@ def run(args, run_dir: Path) -> dict:
         organism_embedding_type=args.organism_embedding_type,
         remove_gene_organism_edges=args.remove_gene_organism_edges,
         remove_organism_nodes=args.remove_organism_nodes,
+        remove_metabolite_organism_edges=args.remove_metabolite_organism_edges,
         split_type=args.split_type,
         species_pool=args.species_pool,
         download=args.download,
         print_summary=args.print_dataset_summary,
     )
 
+
+    if args.data_type != "raw":
+        ctx = build_clean_ctx(ctx)
+        if args.data_type in ("mean", "random"):
+            ctx = randomize_zero_features(ctx, strategy=args.data_type)
+        print(f"\nGraph variant '{args.data_type}':")
+        for nt, x in ctx.train_data.x_dict.items():
+            n_zero = int((x.abs().sum(dim=1) == 0).sum())
+            print(f"  {nt:<12}  num_nodes={x.shape[0]:>7,}  zero-input rows={n_zero:,} "
+                  f"({100*n_zero/x.shape[0]:.1f}%)")
+        for et in ctx.train_data.edge_types:
+            print(f"  {str(et):<50}  num_edges={ctx.train_data[et].num_edges:>10,d}")
+        print()
+
     model = build_model(
-        ctx, gnn_name = args.gnn_name, 
+        ctx, gnn_name=args.gnn_name,
         hidden_dim=args.hidden_dim, num_layers=args.num_layers,
         decoder=args.decoder, dropout=args.dropout, random_seed=args.seed,
+        use_norm=args.layer_norm,
     )
 
     if not args.use_embeddings:
@@ -213,10 +258,30 @@ def run(args, run_dir: Path) -> dict:
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
     )
+
+    scheduler = None
+    if args.lr_scheduler == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    elif args.lr_scheduler == "step":
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma,
+        )
+    elif args.lr_scheduler == "plateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=args.lr_gamma, patience=args.lr_patience,
+        )
+
     hparams = {**vars(args), "device": str(ctx.device), "gpu": gpu if torch.cuda.is_available() else "CPU"}
 
     exclude_pairs = collect_all_pairs(ctx)
     rng           = np.random.default_rng(args.seed)
+
+    if args.neg_pool == "catalyzed":
+        train_conv_idxs = list(ctx.all_catalyst_lookup.keys())
+        print(f"  neg_pool=catalyzed: sampling (Protein, Conversion_random) negatives from "
+              f"{len(train_conv_idxs):,}/{len(ctx.conv_idxs):,} Conversion reactions with a known catalyst")
+    else:
+        train_conv_idxs = ctx.conv_idxs
 
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
@@ -231,17 +296,17 @@ def run(args, run_dir: Path) -> dict:
     latest_path: Path | None = None
 
     history: dict = {k: [] for k in [
-        "train_loss", "val_ph10", "val_ph50", "val_cp_auc", "val_cp_ap", "val_loss", "test_loss",
+        "train_loss", "val_ph10", "val_ph50", "val_cp_auc", "val_cp_ap", "val_loss", "test_loss", "lr",
     ]}
 
     print(f"{'Epoch':>6}  {'loss':>7} {'val_loss':>7} {'tst_loss':>8} "
-          f"{'P-H@10':>7}  {'P-H@50':>7}  {'CP-AUC':>7}  {'time':>6}")
+          f"{'P-H@10':>7}  {'P-H@50':>7}  {'CP-AUC':>7}  {'lr':>9}  {'time':>6}")
     print("─" * 66)
 
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
         loss, diverged = _train_step(
-            model, optimizer, ctx, ctx.train_data,
+            model, optimizer, ctx, ctx.train_data, train_conv_idxs,
             args.neg_k, rng, args.neg_k_cp, exclude_pairs,
             grad_clip=args.grad_clip,
         )
@@ -252,7 +317,15 @@ def run(args, run_dir: Path) -> dict:
         val_cp_auc, val_cp_ap, val_loss, test_loss, ph10, ph50 = _evaluate(
             model.gnn, model.predictor, ctx, args, epoch, exclude_pairs,
         )
+
+        if scheduler is not None:
+            if args.lr_scheduler == "plateau":
+                scheduler.step(val_loss)
+            else:
+                scheduler.step()
+
         dt = time.time() - t0
+        cur_lr = optimizer.param_groups[0]["lr"]
 
         history["train_loss"].append(loss)
         history["val_ph10"].append(ph10)
@@ -261,10 +334,11 @@ def run(args, run_dir: Path) -> dict:
         history["val_cp_ap"].append(val_cp_ap)
         history["val_loss"].append(val_loss)
         history["test_loss"].append(test_loss)
+        history["lr"].append(cur_lr)
 
         if epoch % args.log_every == 0:
             print(f"{epoch:>6d}  {loss:>7.4f}  {val_loss:>7.4f}  {test_loss:>8.4f} "
-                  f"{ph10:>7.4f}  {ph50:>7.4f}  {val_cp_auc:>7.4f}  {dt:>5.1f}s")
+                  f"{ph10:>7.4f}  {ph50:>7.4f}  {val_cp_auc:>7.4f}  {cur_lr:>9.2e}  {dt:>5.1f}s")
 
         if latest_path is not None and latest_path.exists():
             latest_path.unlink()
@@ -272,6 +346,7 @@ def run(args, run_dir: Path) -> dict:
         torch.save({
             "epoch": epoch, "loss": loss, "val_ph50": ph50,
             "model_state": model.state_dict(), "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict() if scheduler is not None else None,
             "hparams": hparams,
         }, latest_path)
 
@@ -334,8 +409,9 @@ def run(args, run_dir: Path) -> dict:
     }
 
 
+    report_path = run_dir / f"report_{args.gnn_name}_epoch{best_epoch:03d}.json"
     save_report(
-        run_dir / "report.json",
+        report_path,
         hparams=hparams,
         dataset_stats=collect_dataset_stats(ctx),
         model_stats=collect_model_stats(model.gnn, model.predictor, ctx),
