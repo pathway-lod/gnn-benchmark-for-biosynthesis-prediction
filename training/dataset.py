@@ -193,6 +193,7 @@ def load_data(
     remove_gene_organism_edges: bool = False,
     remove_organism_nodes: bool = False,
     remove_metabolite_organism_edges: bool = False,
+    bidirectional: bool = False,
     organism_embeddings_path: str | Path | None = None,
     organism_embedding_type: str = "mds",
     split_type: str = "taxa",
@@ -234,6 +235,14 @@ def load_data(
         baseline). Mutually exclusive in effect with remove_gene_organism_edges and
         organism_embeddings_path.
     remove_metabolite_organism_edges : remove (Metabolite, organism, Organism) edges.
+    bidirectional : if True, add (Organism, rev_organism, Protein) and
+        (Metabolite, rev_participants, Interaction) reverse edges. The first lets an
+        organism's proteins share context with each other via the shared Organism hub
+        (safe across the taxa split: organisms are disjoint train/val/test, so this
+        cannot move information across that boundary). The second gives Conversion
+        nodes a live, learned aggregation over their substrate/product Metabolite
+        neighbours' MAP4 embeddings, on top of the static pre-computed DRFP feature.
+        Untested as a default -- opt-in until validated against the baseline.
     organism_embeddings_path : path to embeddings_organism.pt. Replaces the
         random 64-dim Organism features with taxonomy-aware MDS coordinates.
     organism_embedding_type : "mds" (64-dim) or "multihot" (702-dim lineage).
@@ -366,6 +375,19 @@ def load_data(
                     n_removed += n
             print(f"  Blocked {len(currency_idx)} currency metabolite nodes, "
                   f"removed {n_removed:,} edges")
+
+    if bidirectional:
+        prot_org_key = ("Protein", "organism", "Organism")
+        if prot_org_key in data.edge_types:
+            rev_prot_org_key = ("Organism", "rev_organism", "Protein")
+            data[rev_prot_org_key].edge_index = data[prot_org_key].edge_index.flip(0)
+            print("  Added (Organism, rev_organism, Protein) reverse edges")
+
+        inter_met_key = ("Interaction", "participants", "Metabolite")
+        if inter_met_key in data.edge_types:
+            rev_inter_met_key = ("Metabolite", "rev_participants", "Interaction")
+            data[rev_inter_met_key].edge_index = data[inter_met_key].edge_index.flip(0)
+            print("  Added (Metabolite, rev_participants, Interaction) reverse edges")
 
     if remove_metabolite_organism_edges:
         met_org_key = ("Metabolite", "organism", "Organism")

@@ -201,6 +201,7 @@ def load_ctx_for_run(hp: dict, data_dir, **overrides) -> GraphContext:
         remove_gene_organism_edges=hp.get("remove_gene_organism_edges", False),
         remove_organism_nodes=hp.get("remove_organism_nodes", False),
         remove_metabolite_organism_edges=hp.get("remove_metabolite_organism_edges", False),
+        bidirectional=hp.get("bidirectional", False),
         split_type=hp.get("split_type", "taxa"),
         species_pool=hp.get("species_pool", False),
         download=hp.get("download", False),

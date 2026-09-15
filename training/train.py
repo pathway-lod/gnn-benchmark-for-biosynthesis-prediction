@@ -156,6 +156,11 @@ def get_args() -> argparse.Namespace:
                     action=argparse.BooleanOptionalAction, default=True,
                     help="Drop (Metabolite, organism, Organism) edges; on by default, keep them "
                          "with --no-remove-metabolite-organism-edges.")
+    ap.add_argument("--bidirectional", dest="bidirectional",
+                    action=argparse.BooleanOptionalAction, default=False,
+                    help="Add (Organism, rev_organism, Protein) and (Metabolite, "
+                         "rev_participants, Interaction) reverse edges. Off by default "
+                         "pending validation; see dataset.load_data docstring.")
 
     return ap.parse_args()
 
