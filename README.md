@@ -225,7 +225,9 @@ catalyst of that reaction, then ranked. Method follows ReactZyme (Hua et al.,
 
 BLAST hits are precomputed and shipped in `blast/blast_results.tsv`, so
 reproducing the reported numbers needs only the standard data release —
-no local BLAST+ installation required:
+no local BLAST+ installation required. Complete
+[Step 0](#step-0--install-and-download-data) first (environment + data
+download), then from the repo root:
 
 ```bash
 python scripts/blast_evaluate.py                # test split, 8,445-protein pool
