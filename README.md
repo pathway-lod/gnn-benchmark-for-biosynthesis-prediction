@@ -200,6 +200,42 @@ and a discussion of the pool-size difference relative to the GNN baselines.
 > | BLASTp          | 8,445     | 32.4%         |
 > | HeteroSAGE (1L) | 8,445     | 18.9 ± 8.3%   |
 
+To reproduce the 8,445-pool numbers above:
+
+```bash
+cd dual_encoder/
+python train.py --seeds 42 0 1 2 3 --model_selection P-H@50 --num_layers 2 \
+  --keep_duplicates \
+  --checkpoint_dir checkpoints_fullpool \
+  --output results/taxa_L2_ph50_fullpool.json
+```
+
+Swap `--num_layers` for 1 or 3 to reproduce the other rows. Checkpoints and
+results for the default (2,232-pool) runs shown in
+[dual_encoder/README.md](dual_encoder/README.md) omit `--keep_duplicates`.
+
+---
+
+## BLASTp baseline
+
+A sequence-similarity baseline: for each evaluation reaction, every candidate
+protein is scored by its best BLASTp bitscore against any training-set
+catalyst of that reaction, then ranked. Method follows ReactZyme (Hua et al.,
+2024), adapted for the reverse (reaction → protein) direction.
+
+BLAST hits are precomputed and shipped in `blast/blast_results.tsv`, so
+reproducing the reported numbers needs only the standard data release —
+no local BLAST+ installation required:
+
+```bash
+python scripts/blast_evaluate.py                # test split, 8,445-protein pool
+python scripts/blast_evaluate.py --split val     # validation split
+python scripts/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
+```
+
+Regenerating `blast_results.tsv` from raw sequences requires a local
+`blastp`/`makeblastdb` install and is outside the scope of this script.
+
 ---
 
 ## Repository structure
@@ -247,7 +283,11 @@ plantmetbench/
 ├── scripts/                   ← result-generation scripts
 │   ├── run_ablations.py             ← → results/ablations.json
 │   ├── extract_ec_distribution.py   ← → results/ec_distribution.json
-│   └── eval_anyp.py                 ← any-catalyst P-H@K evaluation
+│   ├── eval_anyp.py                 ← any-catalyst P-H@K evaluation
+│   └── blast_evaluate.py            ← BLASTp baseline (reads blast/blast_results.tsv)
+│
+├── blast/                     ← BLASTp baseline data
+│   └── blast_results.tsv      ← precomputed hits (query, subject, bitscore); tracked in git
 │
 └── results/                   ← machine-generated result files (tracked in git)
     ├── README.md              ← what each file is and how to regenerate it
