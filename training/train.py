@@ -240,7 +240,10 @@ def run(args, run_dir: Path) -> dict:
             for nt in split.node_types:
                 dim = split[nt].x.shape[-1]
                 split[nt].x = torch.randn(split[nt].num_nodes, dim, device=ctx.device)
-        ctx.embedded_protein_mask = None
+        # Note: embedded_protein_mask is left intact (not nulled) so evaluation
+        # still restricts to the standard 8,445-protein pool used by every
+        # other model, keeping this a controlled structure-only comparison
+        # rather than also changing the ranking pool size.
 
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay,
