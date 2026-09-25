@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GNN models for the PlantMetBench Learnathon.
+"""GNN models for PlantMetBench.
 
 Baseline (S1): HeteroConv SAGE — one SAGEConv per edge type, two layers, dot-product decoder.
 This file is the main one to modify when experimenting with different architectures.

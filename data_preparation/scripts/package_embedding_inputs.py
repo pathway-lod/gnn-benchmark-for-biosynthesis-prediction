@@ -159,11 +159,11 @@ API scraping (UniProt, NCBI, PubChem, MetaNetX).
 ## How these were generated
 
 - **protein_sequences**: resolved via UniProt REST API / RCSB PDB
-  (scripts/learnathon_embed_proteins.py / scripts/fulldata_embed_proteins.py)
+  (scripts/embed_proteins.py)
 - **gene_sequences**: resolved via NCBI nuccore/eutils
-  (scripts/learnathon_embed_genes.py)
+  (scripts/embed_genes.py)
 - **metabolite_smiles**: resolved via PubChem, MetaNetX, KEGG
-  (scripts/learnathon_embed_metabolites.py)
+  (scripts/embed_metabolites.py)
 - **metabolite_inchikeys**: derived from SMILES using rdkit
 - **conversion_ec**: parsed from data/interim/reactions.ttl via rdflib
   (scripts/compute_ec_embeddings.py)

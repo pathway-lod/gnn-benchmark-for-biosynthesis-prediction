@@ -29,8 +29,8 @@ Usage:
 Output:
     data/processed/embeddings_conversion.pt   (dict {node_uri → 3072-dim float32 tensor})
 
-This file is included in the Zenodo dataset so learnathon participants can use
-precomputed reaction features without needing the MAP4 pipeline.
+This file is included in the Zenodo dataset so users can work with
+precomputed reaction features without running the MAP4 pipeline.
 """
 import argparse
 from pathlib import Path

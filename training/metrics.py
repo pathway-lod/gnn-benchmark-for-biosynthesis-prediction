@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluation metrics for the PlantMetBench Learnathon.
+"""Evaluation metrics for PlantMetBench.
 
 Primary metric — P-H@50 (Protein Hits at K):
   "For this reaction, is the true catalyst in the model's top-50 ranked proteins?"
