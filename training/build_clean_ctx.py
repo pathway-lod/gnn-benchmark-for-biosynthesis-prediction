@@ -137,9 +137,9 @@ def randomize_zero_features(clean_ctx: GraphContext, node_types=("GeneProduct", 
         vector unrelated to the others).
       "mean"   -- every missing node gets the SAME vector: the mean of that
         type's observed (non-zero) embeddings in train_data. Places missing
-        nodes at the modality's "center of mass" -- a neutral "typical node
+        nodes at the modality's "centre of mass" -- a neutral "typical node
         of this type" prior rather than a null vector, and better-behaved
-        than zeros for attention/normalization-sensitive layers (GAT, HGT,
+        than zeros for attention/normalisation-sensitive layers (GAT, HGT,
         any LayerNorm). Trade-off: it fabricates plausible-looking features,
         and because every missing node of a type collapses onto the exact
         same point, the model can (and likely will) learn "is this the mean

@@ -45,7 +45,7 @@ with `mean`, `std`, and per-seed values for every metric.
 | Decoder | dot product | simple, parameter-free |
 | Dropout | 0.3 | between layers only |
 | Epochs | 200 | early stop patience 50 |
-| Optimizer | AdamW | lr=1e-4, weight_decay=1e-5 |
+| Optimiser | AdamW | lr=1e-4, weight_decay=1e-5 |
 | Negatives | 5 × (P, C_rand) + 5 × (P_rand, C) | both directions |
 | Protein features | ESM-C 960-dim | pre-computed |
 | Reaction features | MAP4 DRFP-approx 3072-dim | pre-computed |

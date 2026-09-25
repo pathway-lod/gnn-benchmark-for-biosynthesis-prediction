@@ -335,7 +335,7 @@ of plant metabolic pathways built from PlantCyc, i.e. the Plant Metabolic Networ
 
 ---
 
-## License
+## Licence
 
 **Code:** MIT (see [LICENSE](LICENSE)).
 

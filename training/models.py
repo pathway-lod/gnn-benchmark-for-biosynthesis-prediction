@@ -9,7 +9,7 @@ Suggested experiments:
   - Replace SAGEConv with GATConv, GINConv, or HGTConv
   - Replace DotPredictor with MLPPredictor (already implemented below)
   - Try different aggregation strategies (aggr="sum" vs "mean" vs "max")
-  - Add a residual connection or layer normalization between GNN layers
+  - Add a residual connection or layer normalisation between GNN layers
 """
 import torch
 import torch.nn as nn
@@ -29,7 +29,7 @@ class HeteroGNN(nn.Module):
     - ReLU only *between* layers, not after the last layer: final embeddings
       feed into a dot product, and clamping them at 0 would prevent the model
       from using negative score directions to push wrong pairs down
-    - dropout: standard regularizer, disabled automatically at model.eval()
+    - dropout: standard regulariser, disabled automatically at model.eval()
     """
 
     def __init__(self, edge_types: list, node_types, hidden_dim: int = 128,
@@ -126,12 +126,12 @@ class ResidualHeteroGNN(nn.Module):
       SAGEConv layer is a plain hidden_dim -> hidden_dim block and can carry
       a residual connection
     - residual + LayerNorm: each layer computes x = LN(x + Dropout(conv(x)))
-      per node type, which stabilizes deeper stacks and lets gradients skip
+      per node type, which stabilises deeper stacks and lets gradients skip
       layers directly
     - ReLU only *between* blocks, not after the last one: final embeddings
       feed into a dot product, and clamping them at 0 would prevent the model
       from using negative score directions to push wrong pairs down
-    - dropout: standard regularizer, disabled automatically at model.eval()
+    - dropout: standard regulariser, disabled automatically at model.eval()
     """
 
     def __init__(self, edge_types: list, hidden_dim: int = 128,
@@ -311,9 +311,9 @@ class MIX(nn.Module):
 
     Edge types where either endpoint is a target node type (Protein or
     Interaction, i.e. directly involved in the edge being predicted) use
-    SAGEConv, on the assumption that all of that neighbor's features are
+    SAGEConv, on the assumption that all of that neighbour's features are
     relevant. Edge types among the other node types use GATConv, so the
-    model learns which of those less directly relevant neighbors to
+    model learns which of those less directly relevant neighbours to
     attend to.
     """
 
@@ -355,9 +355,9 @@ def build_model(
     random_seed: int = 42,
     use_norm: bool = False,
 ):
-    """Instantiate GNN + decoder and run a dummy forward pass to materialize weights.
+    """Instantiate GNN + decoder and run a dummy forward pass to materialise weights.
 
-    SAGEConv(-1, -1) uses lazy parameter initialization: weight shapes are not
+    SAGEConv(-1, -1) uses lazy parameter initialisation: weight shapes are not
     allocated until the first forward() call. The dummy forward here means that
     model.parameters() and load_state_dict() work correctly immediately after
     build_model() returns, without requiring an extra forward pass from the caller.
@@ -418,7 +418,7 @@ def build_model(
     model = ModelWithPredictor(gnn, predictor).to(ctx.device)
 
     with torch.no_grad():
-        print(f'Running dummy forward pass to materialize weights...')
+        print(f'Running dummy forward pass to materialise weights...')
         model.gnn(ctx.train_data.x_dict, ctx.train_data.edge_index_dict)
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

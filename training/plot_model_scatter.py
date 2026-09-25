@@ -30,7 +30,7 @@ import matplotlib as mpl
 
 
 
-# One color + hatch per architecture family, so L1/L2/L3 of the same GNN read
+# One colour + hatch per architecture family, so L1/L2/L3 of the same GNN read
 # as a group and stay distinguishable in grayscale / for colorblind readers.
 # Same pastel palette as plot_hidden_dim_ablation.py, for consistency.
 FAMILY_COLORS = {
@@ -185,7 +185,7 @@ def plot(experiments: list[dict], save_path: Path) -> None:
 
     # Fixed-size proxy handles for the architecture legend -- reusing an actual
     # data point's (possibly tiny) marker made small-model swatches look muddy,
-    # since the gray edge dominates a small marker's visible area.
+    # since the grey edge dominates a small marker's visible area.
     families_present = [f for f in FAMILY_COLORS if f in {e["gnn_name"] for e in experiments}]
     family_handles = [
         ax.scatter([], [], s=200, color=FAMILY_COLORS[f], alpha=0.55,
@@ -200,7 +200,7 @@ def plot(experiments: list[dict], save_path: Path) -> None:
     ax.add_artist(family_legend)
 
     # Separate legend explaining marker size -> parameter count. Built from its
-    # own handles (not ax.legend()'s default "everything labeled on the axes")
+    # own handles (not ax.legend()'s default "everything labelled on the axes")
     # so it doesn't also pick up the architecture handles above.
     size_handles = [
         ax.scatter([], [], s=area(n), color="#D6BEBE", alpha=0.55,

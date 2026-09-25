@@ -3,7 +3,7 @@
 
 Trains one model per seed, saving each run independently, then aggregates the
 final results across seeds to report the mean and standard deviation for every
-metric. The taxa split is fixed; only model initialization and negative sampling
+metric. The taxa split is fixed; only model initialisation and negative sampling
 vary across seeds.
 
 Usage:
