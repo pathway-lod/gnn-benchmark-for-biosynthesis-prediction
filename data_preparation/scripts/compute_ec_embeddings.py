@@ -6,8 +6,8 @@ Parses data/interim/reactions.ttl once with rdflib (~30-60 s), builds a
 
   data/processed/embeddings_ec.pt
       dict {node_uri_str → 237-dim float32 tensor}  (same format as
-      embeddings_conversion.pt).  Loaded automatically by fulldata_baseline_train.py
-      when --ec-features is passed, skipping the TTL parse entirely.
+      embeddings_conversion.pt).  Loaded by training/dataset.py
+      when load_ec_embeddings=True (train.py --ec-features), skipping the TTL parse entirely.
 
   data/processed/nodes.tsv  (UPDATED IN-PLACE)
       Adds an `ec_number` column to the existing file.  All Interaction rows
@@ -36,14 +36,107 @@ import pandas as pd
 import torch
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "training"))
-
-from fulldata_baseline_common import (  # noqa: E402
-    build_ec_hierarchy_features,
-    parse_ec_from_reactions_ttl,
-)
-
 HIERARCHY_LEVELS = 3
+
+
+def parse_ec_from_reactions_ttl(ttl_path: Path) -> dict[str, str]:
+    """Parse reactions.ttl -> {rxn_local_id: ec_string} using rdflib.
+
+    Returns the FULL EC annotation string (e.g. '2.1.1.280') per local
+    Interaction ID (last URI path segment).  The first annotation found per
+    node is kept.  Callers that only need the top-level class can do
+    int(ec_str.split('.')[0]).
+
+    Note: parsing a 4 M-line TTL with rdflib takes ~30-60 s the first time
+    (single-threaded Turtle parser); this is a one-off cost.
+    """
+    from rdflib import Graph
+    from rdflib.namespace import Namespace
+
+    GPML = Namespace("http://vocabularies.wikipathways.org/gpml#")
+
+    print(f"  Loading {Path(ttl_path).name} with rdflib (one-off, ~30-60 s)...")
+    g = Graph()
+    g.parse(str(ttl_path), format="turtle")
+    print(f"  Parsed {len(g):,} triples")
+
+    ec_by_local: dict[str, str] = {}
+    for s, _p, o in g.triples((None, GPML.xrefId, None)):
+        o_str = str(o)
+        if not o_str.startswith("EC-"):
+            continue
+        s_str = str(s)
+        if "/Interaction/" not in s_str:
+            continue
+        local = s_str.rsplit("/", 1)[-1]
+        ec_str = o_str[3:]                         # "EC-2.1.1.280" -> "2.1.1.280"
+        first_seg = ec_str.split(".")[0]
+        if not first_seg.isdigit() or not (1 <= int(first_seg) <= 7):
+            continue
+        if local not in ec_by_local:
+            ec_by_local[local] = ec_str
+
+    return ec_by_local
+
+
+def build_ec_hierarchy_features(
+    ec_by_local: dict[str, str],
+    node_ids: list[str],
+    hierarchy_levels: int = 3,
+) -> tuple[torch.Tensor, list[dict[str, int]]]:
+    """Build concatenated multi-level EC one-hot features for Interaction nodes.
+
+    Each requested level adds a one-hot slice over the unique EC prefixes at
+    that depth, plus one 'unknown' bin for nodes with no annotation (or an
+    annotation shallower than this level).  Slices are concatenated in order
+    L1 || L2 || L3 (|| L4 if hierarchy_levels==4).
+
+    Typical dimensions (from PlantMetWiki reactions.ttl):
+      levels=1  ->   8 dims  (7 classes + unknown)
+      levels=2  ->  69 dims  (+ 60 subclasses)
+      levels=3  -> 237 dims  (+ 167 sub-subclasses)
+      levels=4  -> 1679 dims (+ 1441 full EC numbers, sparse)
+
+    Vocabs are built from ALL entries in ec_by_local (not split-specific),
+    so feature indices are stable across train/val/test.
+
+    Returns:
+      features  : (len(node_ids), total_dim) float32 tensor
+      level_vocabs: list of {ec_prefix: col_index} dicts, one per level
+    """
+    hierarchy_levels = min(max(hierarchy_levels, 1), 4)
+
+    # Level 1 vocab is always the 7 canonical EC classes (not data-derived)
+    # so the one-hot ordering is deterministic even if data is incomplete.
+    level_vocabs: list[dict[str, int]] = [
+        {str(c): c - 1 for c in range(1, 8)}   # "1"->0, "2"->1, ..., "7"->6
+    ]
+    for level in range(2, hierarchy_levels + 1):
+        prefixes = sorted({
+            ".".join(ec_str.split(".")[:level])
+            for ec_str in ec_by_local.values()
+            if len(ec_str.split(".")) >= level
+        })
+        level_vocabs.append({p: i for i, p in enumerate(prefixes)})
+
+    # Total dim: sum of (vocab_size + 1 unknown) per level
+    total_dim = sum(len(v) + 1 for v in level_vocabs)
+    features = torch.zeros(len(node_ids), total_dim, dtype=torch.float32)
+
+    col = 0
+    for level, vocab in enumerate(level_vocabs, start=1):
+        unknown_idx = len(vocab)
+        for i, node_id in enumerate(node_ids):
+            local = node_id.rsplit("/", 1)[-1]
+            ec_str = ec_by_local.get(local)
+            if ec_str is not None and len(ec_str.split(".")) >= level:
+                prefix = ".".join(ec_str.split(".")[:level])
+                features[i, col + vocab.get(prefix, unknown_idx)] = 1.0
+            else:
+                features[i, col + unknown_idx] = 1.0
+        col += len(vocab) + 1
+
+    return features, level_vocabs
 
 
 def compute(ttl_path: Path, data_dir: Path, out_dir: Path) -> None:
