@@ -53,12 +53,10 @@ with `mean`, `std`, and per-seed values for every metric.
 | Reverse `catalyzed_by` | removed | prevents 2-hop shortcut |
 | Disjoint train ratio | 0.2 | prevents 1-hop shortcut |
 
-## Expected results (seed=42)
+## Results
 
-| Split | P-H@50 | CP-AUC | CP-AP |
-|-------|--------|--------|-------|
-| Val   | 11.5%  | 0.906  | 0.858 |
-| Test  | 6.0%   | 0.891  | 0.817 |
+Validation and test P-H@K, CP-AUC and CP-AP are printed at the end of each run and
+saved to `runs/<run-name>/.../report_*.json`. The reported numbers are in the paper.
 
 Random baseline: P-H@50 = 50/8445 ≈ **0.59%**
 
@@ -72,17 +70,17 @@ metric — it directly measures protein-ranking quality.
 the true (Protein, Reaction) pair from a random-protein pair for the same reaction.
 
 > **Do not use the random-negative AUC** (`evaluate_random_neg_auc`) as a training
-> signal — it inflates to ~0.98 due to Pathway co-membership even for random
-> embeddings. It is logged only for historical comparability.
+> signal — it is inflated close to 1 by Pathway co-membership even for random
+> embeddings. It is logged for reference only.
 
 ## Shortcut ablations
 
 | Ablation | Effect |
 |----------|--------|
 | `--keep-catalyzed-by` (edit dataset.py) | 2-hop P→C→P shortcut; inflates val AUC |
-| `--ec-features` | EC one-hot gives reaction-class identity → ~80% val→test gap |
+| `--ec-features` | EC one-hot gives reaction-class identity → large val→test gap |
 | `disjoint_train_ratio=0` (edit dataset.py) | 1-hop shortcut; model memorises training pairs |
-| Without `remove_is_part_of` (edit dataset.py) | Pathway membership inflates AUC to ~0.98 |
+| Without `remove_is_part_of` (edit dataset.py) | Pathway membership inflates AUC close to 1 |
 
 ## Files
 

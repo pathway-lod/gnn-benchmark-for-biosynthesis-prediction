@@ -68,15 +68,9 @@ To skip experiments already completed:
 python ../scripts/run_ablations.py --skip-existing
 ```
 
-Expected results (baseline, seed=42):
-
-| Configuration | Val P-H@50 | Test P-H@50 |
-|---|---|---|
-| Baseline (all shortcuts removed) | ~11.5% | ~6.0% |
-| +Pathway co-membership | TBD | TBD |
-| +Reverse catalysis edge | TBD | TBD |
-| No disjoint train ratio | TBD | TBD |
-| +EC one-hot features | TBD | TBD |
+The configurations are: baseline (all shortcuts removed), with Pathway co-membership,
+with the reverse catalysis edge, without the disjoint train ratio, and with EC one-hot
+features. `ablations.json` holds the results of each.
 
 ---
 

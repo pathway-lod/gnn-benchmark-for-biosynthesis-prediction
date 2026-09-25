@@ -6,17 +6,15 @@ Primary metric — P-H@50 (Protein Hits at K):
   Pool    : embedded proteins only (~8,445)
   Eval on : edges whose true catalyst has an ESM embedding (eval_embedded_only=True)
   Random baseline : 50/8445 ≈ 0.59%
-  S1 baseline     : val P-H@50 = 0.021
 
 Secondary metric — CP-AUC (Corrupt-Protein AUC):
   "Can the model score the true (Protein, Reaction) pair above a random-protein pair?"
   Random baseline : 0.50
-  S1 baseline     : val CP-AUC = 0.87
 
 Both metrics focus on the protein-ranking direction (which protein catalyses this
 reaction?), which is the primary research question. Do NOT rely on the standard
 AUC from evaluate_random_neg_auc() as a model-quality indicator — it inflates
-to ~0.98 due to Pathway co-membership even for random embeddings.
+close to 1 because of Pathway co-membership even for random embeddings.
 """
 from __future__ import annotations
 
@@ -256,7 +254,7 @@ def evaluate_random_neg_auc(
     """AUC/AP/loss on the 1:1 random-negative pairs in the split.
 
     WARNING: this metric is unreliable as a training signal for the research
-    question. Pathway co-membership inflates it to ~0.98+ even for models that
+    question. Pathway co-membership inflates it close to 1 even for models that
     have learned nothing protein-specific. Use P-H@50 and CP-AUC instead.
     It is logged here for historical comparability, not as a target metric.
 

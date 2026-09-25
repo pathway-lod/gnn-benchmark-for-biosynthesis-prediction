@@ -76,7 +76,7 @@ def get_args() -> argparse.Namespace:
                     help="Keep (Interaction, catalyzed_by, Protein) reverse edges (re-introduces 2-hop shortcut).")
     ap.add_argument("--ec-features", dest="ec_features", action="store_true", default=False,
                     help="Append 237-dim EC one-hot to Interaction nodes. "
-                         "WARNING: causes ~80%% val→test gap — ablation only.")
+                         "WARNING: causes large val→test gap — ablation only.")
     ap.add_argument("--split-type", dest="split_type",
                     choices=["taxa", "pathway", "random", "ath_pathway"], default="taxa",
                     help="Holdout strategy: 'taxa' (species holdout, default), "

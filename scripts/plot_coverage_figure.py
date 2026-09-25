@@ -177,7 +177,7 @@ def make_figure(rows):
                      s=78, color=C["ath"], alpha=0.92, zorder=6,
                      linewidths=0.9, edgecolors="white")
         ax_a.annotate(
-            r"$\it{A.\,thaliana}$" + "\n97.6%  (5,421 prot.)",
+            r"$\it{A.\,thaliana}$" + f"\n{ath['coverage']:.1%}  ({ath['n_prot']:,} prot.)",
             xy=(col_x["train"], ath["coverage"]),
             xytext=(col_x["train"] + 0.52, ath["coverage"] - 0.11),
             fontsize=6.2, color=C["ath"], ha="left", va="top",
@@ -186,16 +186,16 @@ def make_figure(rows):
         )
 
     # Median lines
-    medians = {"train": 0.0, "val": 0.680, "test": 0.862}
+    medians = {s: float(np.median([o["coverage"] for o in orgs])) for s, orgs in by_split.items()}
     for split, med in medians.items():
         cx  = col_x[split]
         col = col_col[split]
         lw  = 1.9
-        if split == "train":
-            # median=0 is at the cluster; draw line just above
+        if med < 0.03:
+            # a median at (or near) 0 sits on the zero-coverage cluster; draw the line just above
             ax_a.hlines(0.0, cx - 0.22, cx + 0.22,
                         colors=col, linewidth=lw, zorder=5, alpha=0.95)
-            ax_a.text(cx + 0.26, 0.025, "median 0%",
+            ax_a.text(cx + 0.26, 0.025, f"median {med*100:.0f}%",
                       va="bottom", fontsize=6.0, color=col, fontweight="medium")
         else:
             ax_a.hlines(med, cx - 0.22, cx + 0.22,
@@ -222,7 +222,7 @@ def make_figure(rows):
     ax_a.set_yticklabels(["0%", "25%", "50%", "75%", "100%"])
     ax_a.set_xticks([col_x[s] for s in ("train", "val", "test")])
     ax_a.set_xticklabels(
-        ["Training\n(n=324)", "Validation\n(n=11)", "Test\n(n=69)"],
+        [f"Training\n(n={len(by_split['train'])})", f"Validation\n(n={len(by_split['val'])})", f"Test\n(n={len(by_split['test'])})"],
         fontsize=7.5,
     )
     for tick, sp in zip(ax_a.get_xticklabels(), ("train", "val", "test")):

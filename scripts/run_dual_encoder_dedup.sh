@@ -3,7 +3,7 @@
 # (no --keep_duplicates) for L1, L2, L3, model selected by P-H@50.
 #
 # These fill the "2,232 pool" column in Appendix Table (tab:dedup_results).
-# L2/P-H@50 (63.0%) is already known from the original runs; L1 and L3 are missing.
+# Runs the dual encoder with L1, L2 and L3 on the 2,232-protein deduplicated pool.
 #
 # Run from repo root:
 #   bash plantmetbench/scripts/run_dual_encoder_dedup.sh

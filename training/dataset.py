@@ -234,7 +234,7 @@ def load_data(
         chemistry is then represented solely by conversion fingerprints.
         Mutually exclusive with remove_currency_metabolites.
     load_ec_embeddings : append 237-dim EC hierarchy one-hot to Interaction
-        features (3072→3309-dim). WARNING: causes ~80% val→test gaps in the
+        features (3072→3309-dim). WARNING: causes large val→test gaps in the
         taxa holdout — use only as an ablation, not as the baseline.
     remove_gene_organism_edges : remove (GeneProduct, organism, Organism) edges
         while keeping (Protein, organism, Organism).

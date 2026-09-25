@@ -112,21 +112,11 @@ deviation over seeds 42, 0, 1, 2, 3.
 > like-for-like comparison requires re-evaluating the GNN under the same group-collapsing
 > rule, scoring each group by the max over its members.
 
-| Metric | Mean | Std |
-| --- | ---: | ---: |
-| P-H@10 | 0.3514 | 0.0043 |
-| P-H@50 | 0.6301 | 0.0077 |
-| CP-AUC | 0.9209 | 0.0059 |
-| CP-AP | 0.6253 | 0.0051 |
-
-| | |
-| --- | --- |
-| Model parameters | 18,768,896 |
-| Time per epoch | 0.0072 s ± 0.0007 s |
-
-Epoch time measures the training step alone — forward, backward, optimiser — excluding
-validation passes, so it does not depend on the `--eval_every` cadence. Remaining
-cut-offs: P-H@1 is 0.0125 ± 0.0071 and P-H@5 is 0.2394 ± 0.0152.
+The script reports P-H@1/5/10/50, CP-AUC and CP-AP as mean and standard deviation over
+the five seeds, and the number of model parameters and the training time per epoch.
+Epoch time measures the training step alone (forward, backward, optimiser), excluding
+validation passes, so it does not depend on the `--eval_every` cadence. The reported
+numbers are in the paper.
 
 > Run `python train.py` to regenerate `results/results.json` and the per-seed
 > checkpoints; they are gitignored and not shipped with the repository.

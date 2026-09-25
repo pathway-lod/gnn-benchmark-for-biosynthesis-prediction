@@ -15,7 +15,6 @@ cross-species taxa holdout — the model never sees the test organisms during tr
 | Split | Taxa holdout (11 val / 69 test organisms) |
 | Primary metric | P-H@50 (protein ranking hits at 50) |
 | Random P-H@50 | 50 / 8,445 ≈ 0.59% |
-| Baseline P-H@50 | val 23.3% / test 18.9% (1-layer, no organisms) |
 
 ---
 
@@ -75,15 +74,9 @@ cd training/
 python train.py
 ```
 
-Expected output (after ~200 epochs, seed 42):
-
-```
-val  P-H@50 ≈ 0.175   CP-AUC ≈ 0.87   CP-AP ≈ 0.85
-test P-H@50 ≈ 0.13    CP-AUC ≈ 0.84   CP-AP ≈ 0.80
-```
-
-Results are saved to `runs/baseline/report.json` (includes GPU timing + peak memory).
-For multi-seed mean±std: val 23.3% ± 4.1%, test 18.9% ± 8.3% (5 seeds).
+The script prints P-H@1/5/10/50, CP-AUC and CP-AP for the validation and test splits
+at the best epoch, and saves them to `runs/baseline/.../report_*.json` (which also
+includes GPU timing and peak memory). The reported numbers are in the paper.
 
 ---
 
@@ -190,17 +183,8 @@ and a discussion of the pool-size difference relative to the GNN baselines.
 > distinct ESM-C vectors** (identical protein sequences collapsed); the full pool has
 > 8,445 proteins. Use `--keep_duplicates` to evaluate on the same 8,445-protein pool
 > as the GNN and BLASTp baselines. Results on both pool sizes are in the paper appendix.
->
-> | Method          | Pool size | P-H@50 (test) |
-> |-----------------|-----------|---------------|
-> | Dual enc. L1    | 8,445     | 32.8 ± 0.5%   |
-> | Dual enc. L2    | 8,445     | 32.6 ± 1.0%   |
-> | Dual enc. L3    | 8,445     | 30.6 ± 1.0%   |
-> | Dual enc. L2    | 2,232     | 63.0 ± 0.8%   |
-> | BLASTp          | 8,445     | 32.4%         |
-> | HeteroSAGE (1L) | 8,445     | 18.9 ± 8.3%   |
 
-To reproduce the 8,445-pool numbers above:
+To evaluate on the 8,445-protein pool:
 
 ```bash
 cd dual_encoder/
@@ -210,7 +194,7 @@ python train.py --seeds 42 0 1 2 3 --model_selection P-H@50 --num_layers 2 \
   --output results/taxa_L2_ph50_fullpool.json
 ```
 
-Swap `--num_layers` for 1 or 3 to reproduce the other rows. Checkpoints and
+Use `--num_layers` 1 or 3 for the other depths. Checkpoints and
 results for the default (2,232-pool) runs shown in
 [dual_encoder/README.md](dual_encoder/README.md) omit `--keep_duplicates`.
 
