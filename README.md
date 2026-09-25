@@ -318,6 +318,7 @@ plantmetbench/
 │
 └── results/                   ← generated result files (not tracked; see results/README.md)
     └── README.md              ← what each file is and how to regenerate it
+```
 
 ---
 
