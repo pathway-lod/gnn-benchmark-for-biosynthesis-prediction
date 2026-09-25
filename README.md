@@ -317,3 +317,11 @@ of plant metabolic pathways built from PlantCyc, i.e. the Plant Metabolic Networ
 **Zenodo:**
 - Full dataset (graph + splits + embeddings): [10.5281/zenodo.20847651](https://doi.org/10.5281/zenodo.20847651)
 - Embedding inputs (sequences, SMILES, EC numbers): [10.5281/zenodo.21237830](https://doi.org/10.5281/zenodo.21237830)
+
+---
+
+## License
+
+**Code:** MIT (see [LICENSE](LICENSE)).
+
+**Data:** the dataset is derived from PlantCyc, part of the Plant Metabolic Network (PMN), and is distributed under the terms of the *General Terms and Conditions of Open Database License for the Plant Metabolic Network Databases* (<https://plantcyc.org/webform/license-agreement/>). That licence permits royalty-free use, modification and redistribution for any purpose, provided that modified copies (i) identify the database they derive from, (ii) include its copyright notices and author lists, and (iii) summarise the modifications. The dataset archive contains the full licence text, the source attribution and the list of modifications in its `LICENSE.md`.
