@@ -44,7 +44,7 @@ with `mean`, `std`, and per-seed values for every metric.
 | Layers | 2 | min 2 for 2-hop neighbourhood |
 | Decoder | dot product | simple, parameter-free |
 | Dropout | 0.3 | between layers only |
-| Epochs | 200 | early stop patience 50 |
+| Epochs | 650 | early stop patience 300 |
 | Optimiser | AdamW | lr=1e-4, weight_decay=1e-5 |
 | Negatives | 5 × (P, C_rand) + 5 × (P_rand, C) | both directions |
 | Protein features | ESM-C 960-dim | pre-computed |
@@ -109,7 +109,7 @@ Key flags:
 --num-layers INT        Number of HeteroConv layers (default 2)
 --decoder dot|mlp       Link decoder (default dot)
 --dropout FLOAT         Dropout rate (default 0.3)
---epochs INT            Training epochs (default 200)
+--epochs INT            Training epochs (default 650)
 --seed INT              Random seed (default 42)
 --no-embeddings         Structural baseline: random node features
 --ec-features           Append EC one-hot (ablation only — causes val→test gap)

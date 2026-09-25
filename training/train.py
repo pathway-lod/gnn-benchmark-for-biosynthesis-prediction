@@ -6,7 +6,7 @@ Split: taxa holdout — val/test organisms are held out from training.
 Graph: PlantMetWiki knowledge graph, 424 plant species.
 
 Baseline (all defaults):
-  HeteroSAGE · 2 layers · 128-dim · per-layer LayerNorm · dot decoder · 200 epochs · seed 42
+  HeteroSAGE · 2 layers · 128-dim · per-layer LayerNorm · dot decoder · 650 epochs · seed 42
   Taxa split · cleaned graph (alias Metabolite/GeneProduct and blank-subtype Interaction nodes dropped)
   remove Pathway edges · remove (Metabolite, organism, Organism) edges
   disjoint_train_ratio=0.2 · no catalyzed_by
@@ -107,7 +107,7 @@ def get_args() -> argparse.Namespace:
                          "data_dir/embeddings_protein.pt")
 
     # Training
-    ap.add_argument("--epochs", type=int, default=200)
+    ap.add_argument("--epochs", type=int, default=650)
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=1e-5)
     ap.add_argument("--grad-clip", type=float, default=0.5,

@@ -149,12 +149,12 @@ Key flags:
 | `--num-layers` | 2 | Number of GNN layers |
 | `--decoder` | dot | Predictor type (`dot` or `mlp`) |
 | `--dropout` | 0.3 | Dropout between GNN layers |
-| `--epochs` | 200 | Max training epochs |
+| `--epochs` | 650 | Max training epochs |
 | `--lr` | 1e-4 | Learning rate |
 | `--seed` | 42 | Random seed |
 | `--neg-k` | 5 | Conversion-side negatives per positive |
 | `--neg-k-cp` | 5 | Protein-side negatives per positive |
-| `--early-stop-patience` | 50 | Epochs without val P-H@50 improvement |
+| `--early-stop-patience` | 300 | Epochs without val P-H@50 improvement |
 | `--run-name` | baseline | Output directory under `runs/` |
 | `--no-embeddings` | — | Replace pre-computed features with random (structural baseline) |
 | `--ec-features` | — | Add EC one-hot to Interaction nodes (**ablation only**) |

@@ -54,7 +54,7 @@ cd training/
 python ../scripts/run_ablations.py
 ```
 
-Each experiment is ~200 epochs and runs sequentially. Writes `results/ablations.json`.
+Experiments run sequentially, each with the default schedule (up to 650 epochs, early-stop patience 300). Writes `results/ablations.json`.
 
 To re-run only one ablation (e.g., the EC features shortcut):
 
