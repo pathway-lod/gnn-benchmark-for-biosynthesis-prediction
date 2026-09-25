@@ -12,7 +12,7 @@ Ablation plan (Table E.1 in the appendix):
   ec_features       : --ec-features              (re-enables EC one-hot features)
 
 Usage:
-    cd plantmetbench/training/
+    cd training/
     python ../scripts/run_ablations.py
 
     # or from repo root:

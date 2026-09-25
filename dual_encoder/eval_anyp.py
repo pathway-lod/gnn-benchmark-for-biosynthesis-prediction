@@ -6,7 +6,7 @@ top-K ranked pool candidates, mirroring
 scripts/eval_anyp.py / training/dataset.py's all_catalyst_lookup for the GNN.
 
 Usage (from repo root):
-    python plantmetbench/dual_encoder/eval_anyp.py \
+    python dual_encoder/eval_anyp.py \
         --checkpoint_dir checkpoints_fullpool --split_file splits_ath_pathway.pt \
         --species_pool --keep_duplicates
 """

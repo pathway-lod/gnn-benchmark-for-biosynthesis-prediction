@@ -5,16 +5,16 @@
 # Ranking pool: A. thaliana proteins only (~5,289 with ESM-C, random P-H@50=0.95%)
 #
 # Run from repo root:
-#   bash plantmetbench/scripts/run_ath_baseline.sh
+#   bash scripts/run_ath_baseline.sh
 #
 # Override python path:
-#   PYTHON=/path/to/env/bin/python bash plantmetbench/scripts/run_ath_baseline.sh
+#   PYTHON=/path/to/env/bin/python bash scripts/run_ath_baseline.sh
 
 set -euo pipefail
 
 PYTHON=${PYTHON:-python}
-TRAIN=plantmetbench/training/train_seeds.py
-RESULTS=plantmetbench/results/ath_baseline
+TRAIN=training/train_seeds.py
+RESULTS=results/ath_baseline
 
 COMMON="--seeds 42 0 1 2 3 --split_type ath_pathway --species_pool"
 
@@ -41,7 +41,7 @@ OUT="$RESULTS/dual_encoder_L1_ath.json"
 if [[ -f "$OUT" ]]; then
   echo "  already exists, skipping."
 else
-  $PYTHON plantmetbench/dual_encoder/train.py \
+  $PYTHON dual_encoder/train.py \
     --seeds 42 0 1 2 3 \
     --num_layers 1 \
     --split_type ath_pathway \

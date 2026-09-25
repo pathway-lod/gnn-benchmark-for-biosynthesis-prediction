@@ -21,8 +21,8 @@ data/splits_ath_pathway.pt
 
 Usage
 -----
-    python plantmetbench/training/build_splits_ath.py
-    python plantmetbench/training/build_splits_ath.py --data-dir /path/to/data --seed 42
+    python training/build_splits_ath.py
+    python training/build_splits_ath.py --data-dir /path/to/data --seed 42
 """
 from __future__ import annotations
 

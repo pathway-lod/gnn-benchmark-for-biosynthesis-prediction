@@ -214,9 +214,9 @@ no local BLAST+ installation required. Complete
 download), then from the repo root:
 
 ```bash
-python scripts/blast_evaluate.py                # test split, 8,445-protein pool
-python scripts/blast_evaluate.py --split val     # validation split
-python scripts/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
+python blast/blast_evaluate.py                # test split, 8,445-protein pool
+python blast/blast_evaluate.py --split val     # validation split
+python blast/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
 ```
 
 Regenerating `blast_results.tsv` from raw sequences requires a local
@@ -267,29 +267,29 @@ plantmetbench/
 │   ├── losses.py              ← full-batch MLNCE loss
 │   ├── data.py                ← benchmark loading, split remapping
 │   ├── metrics.py             ← P-H@K, CP-AUC/AP
+│   ├── eval_anyp.py           ← any-catalyst P-H@K evaluation
+│   ├── run_dedup.sh           ← runs L1-L3 on the 2,232-protein deduplicated pool
 │   └── train.py               ← per-seed training loop + CLI
 │
-├── scripts/                   ← result-generation scripts
-│   ├── run_ablations.py             ← → results/ablations.json
-│   ├── extract_ec_distribution.py   ← → results/ec_distribution.json
-│   ├── eval_anyp.py                 ← any-catalyst P-H@K evaluation
-│   └── blast_evaluate.py            ← BLASTp baseline (reads blast/blast_results.tsv)
-│
-├── blast/                     ← BLASTp baseline data
+├── blast/                     ← BLASTp baseline (self-contained)
+│   ├── blast_evaluate.py      ← evaluates the precomputed hits on the benchmark splits
 │   └── blast_results.tsv      ← precomputed hits (query, subject, bitscore); tracked in git
 │
+├── scripts/                   ← analysis, result-generation and plotting scripts
+│   ├── run_ablations.py             ← shortcut ablations → results/ablations.json
+│   ├── run_ath_baseline.sh          ← A. thaliana reaction-holdout runs
+│   ├── extract_ec_distribution.py   ← → results/ec_distribution.json
+│   ├── eval_anyp.py                 ← any-catalyst P-H@K evaluation of GNN checkpoints
+│   ├── eval_pathway_reconstruction.py ← pathway reconstruction from ranked proteins
+│   ├── eval_rhea_validation.py      ← Rhea cross-validation of high-ranked unlabelled proteins
+│   ├── check_rhea_coverage.py       ← Rhea coverage of the benchmark reactions
+│   ├── plot_coverage_figure.py      ← embedding-coverage figure
+│   └── render_results_tables.py     ← prints the appendix tables from results/
+│
+├── figures/                   ← figures used in the paper and notebooks (PNG)
+│
 └── results/                   ← generated result files (not tracked; see results/README.md)
-    ├── README.md              ← what each file is and how to regenerate it
-    ├── ec_distribution.json
-    ├── ablations.json
-    ├── sage_1layer/seeds_summary.json
-    ├── sage_2layer/seeds_summary.json
-    ├── sage_3layer/seeds_summary.json
-    ├── split_random/seeds_summary.json
-    ├── split_pathway/seeds_summary.json
-    ├── org_random/seeds_summary.json
-    └── org_taxmds/seeds_summary.json
-```
+    └── README.md              ← what each file is and how to regenerate it
 
 ---
 

@@ -10,7 +10,7 @@ We read only the L1 slice to count how many Conversion nodes belong to each
 top-level EC class, then write results/ec_distribution.json for the appendix table.
 
 Usage:
-    cd plantmetbench/
+    cd <repo root>
     python scripts/extract_ec_distribution.py
     python scripts/extract_ec_distribution.py --data-dir /path/to/data
 """

@@ -20,9 +20,9 @@ Regenerating blast_results.tsv from raw sequences requires a local `blastp`/
 `makeblastdb` install and is outside the scope of this script.
 
 Run from repo root:
-    python scripts/blast_evaluate.py
-    python scripts/blast_evaluate.py --split val     # validation split
-    python scripts/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
+    python blast/blast_evaluate.py
+    python blast/blast_evaluate.py --split val     # validation split
+    python blast/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
 """
 import argparse
 import json
