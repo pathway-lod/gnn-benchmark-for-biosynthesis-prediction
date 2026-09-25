@@ -96,6 +96,11 @@ def get_args() -> argparse.Namespace:
                     help="Path to embeddings_organism.pt for taxonomy-aware Organism features")
     ap.add_argument("--organism-embedding-type", dest="organism_embedding_type",
                     choices=["mds", "multihot"], default="mds")
+    ap.add_argument("--protein-embeddings", dest="protein_embeddings_path",
+                    default=None, metavar="PATH",
+                    help="Path to an alternate protein embeddings .pt file "
+                         "({node_id: tensor}, any dim); defaults to "
+                         "data_dir/embeddings_protein.pt")
 
     # Training
     ap.add_argument("--epochs", type=int, default=200)

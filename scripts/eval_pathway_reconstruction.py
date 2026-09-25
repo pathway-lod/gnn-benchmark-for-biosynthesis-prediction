@@ -108,7 +108,12 @@ def main():
     ap.add_argument("--runs-dir", type=Path, default=RUNS_DIR,
                     help="Config directory containing seed_<s>/ run directories")
     ap.add_argument("--no-plot", action="store_true")
+    ap.add_argument("--tag", default="",
+                    help="Suffix for output filenames, e.g. 'taxa' -> "
+                         "pathway_reconstruction_taxa.json (default: no suffix, "
+                         "matching the original A. thaliana output names).")
     args = ap.parse_args()
+    suffix = f"_{args.tag}" if args.tag else ""
 
     print("Loading KG for pathway structure …")
     heterodata = torch.load(DATA_DIR / "heterodata.pt", weights_only=False)
@@ -132,8 +137,7 @@ def main():
         ckpt = torch.load(ckpt_path, weights_only=False)
         hp = ckpt.get("hparams", {})
 
-        ctx = load_ctx_for_run(hp, DATA_DIR, seed=seed, split_type="ath_pathway",
-                               species_pool=True, download=True)
+        ctx = load_ctx_for_run(hp, DATA_DIR, seed=seed, download=True)
         if pathway_map is None:
             raw_ids = interaction_node_ids(ctx.nodes_df, "raw")
             pathway_map = {raw_ids[i]: pw for i, pw in raw_pathway_map.items()}
@@ -222,7 +226,7 @@ def main():
           f"Single-reaction pathways: {(sizes == 1).sum()}")
 
     # ── Save JSON ──────────────────────────────────────────────────────────────
-    out_json = RES_DIR / "pathway_reconstruction.json"
+    out_json = RES_DIR / f"pathway_reconstruction{suffix}.json"
     out_data = {
         "k": args.k,
         "seeds": args.seeds,
@@ -249,6 +253,7 @@ def main():
     # ── Figure ────────────────────────────────────────────────────────────────
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
+    from matplotlib.patches import Patch
 
     plt.rcParams.update({
         "font.family": "sans-serif",
@@ -310,6 +315,17 @@ def main():
     ax_a.text(-0.02, 1.03, "A", transform=ax_a.transAxes,
               fontsize=10, fontweight="bold", color=C["text"])
 
+    # Shared legend (same three-colour scheme as panel B), placed inside A's top right
+    legend_handles = [
+        Patch(facecolor=C["full"], alpha=0.88, label="Fully reconstructed"),
+        Patch(facecolor=C["partial"], alpha=0.82, label="Partial (1–99%)"),
+        Patch(facecolor=C["none"], alpha=0.82, label="Not reconstructed"),
+    ]
+    ax_a.legend(handles=legend_handles, fontsize=6, loc="upper right",
+                frameon=True, framealpha=0.9, edgecolor="#D8DDE4",
+                handlelength=0.8, handleheight=0.8,
+                borderpad=0.4, labelspacing=0.3)
+
     # Panel B: stacked bar chart — fraction of pathways in each category
     # stratified by pathway size (1, 2–5, 6+ test reactions)
     size_bins = [(1,1,"1"), (2,5,"2–5"), (6,999,"≥6")]
@@ -352,16 +368,11 @@ def main():
     ax_b.spines["left"].set_color("#D0D8E0")
     ax_b.tick_params(colors=C["sub"], length=2.5)
     ax_b.set_title("By pathway size (test rxns/pathway)", fontsize=7, color=C["sub"], pad=4)
-    ax_b.legend(fontsize=6, loc="lower center",
-                bbox_to_anchor=(0.5, -0.58),
-                ncol=1, frameon=True, framealpha=0.9, edgecolor="#D8DDE4",
-                handlelength=0.8, handleheight=0.8,
-                borderpad=0.4, labelspacing=0.2)
     ax_b.text(-0.22, 1.03, "B", transform=ax_b.transAxes,
               fontsize=10, fontweight="bold", color=C["text"])
 
     for ext in ("pdf", "png"):
-        out = FIG_DIR / f"pathway_reconstruction.{ext}"
+        out = FIG_DIR / f"pathway_reconstruction{suffix}.{ext}"
         fig.savefig(out, dpi=300, bbox_inches="tight")
         print(f"Saved → {out}")
 

@@ -198,6 +198,7 @@ def load_ctx_for_run(hp: dict, data_dir, **overrides) -> GraphContext:
         remove_all_metabolites=hp.get("remove_all_metabolites", False),
         organism_embeddings_path=hp.get("organism_embeddings_path"),
         organism_embedding_type=hp.get("organism_embedding_type", "mds"),
+        protein_embeddings_path=hp.get("protein_embeddings_path"),
         remove_gene_organism_edges=hp.get("remove_gene_organism_edges", False),
         remove_organism_nodes=hp.get("remove_organism_nodes", False),
         remove_metabolite_organism_edges=hp.get("remove_metabolite_organism_edges", False),

@@ -175,7 +175,8 @@ def main() -> None:
     print(f"Device: {device}")
 
     data = load_plantmet(
-        args.data_dir, split_file=args.split_file, deduplicate=not args.keep_duplicates
+        args.data_dir, split_file=args.split_file, deduplicate=not args.keep_duplicates,
+        species_pool=args.species_pool, protein_embeddings_path=args.protein_embeddings_path,
     )
 
     runs = []
@@ -219,8 +220,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 0, 1, 2, 3])
     parser.add_argument("--data_dir", type=str, default=str(DEFAULT_DATA_DIR))
     parser.add_argument("--split_file", type=str, default="splits_taxa.pt")
+    parser.add_argument("--species_pool", action="store_true",
+                        help="Restrict the retrieval pool to split_file's ath_protein_idxs "
+                             "(only meaningful with --split_file splits_ath_pathway.pt).")
     parser.add_argument("--keep_duplicates", action="store_true",
                         help="Score all 8,445 accessions instead of the 2,232 distinct ESM vectors.")
+    parser.add_argument("--protein_embeddings_path", type=str, default=None,
+                        help="Path to an alternate protein embeddings .pt file "
+                             "({node_id: tensor}, any dim); defaults to "
+                             "data_dir/embeddings_protein.pt")
     parser.add_argument("--checkpoint_dir", type=str, default="checkpoints",
                         help="Where per-seed checkpoints are written; empty string disables saving.")
     parser.add_argument("--output", type=str, default="results/results.json")

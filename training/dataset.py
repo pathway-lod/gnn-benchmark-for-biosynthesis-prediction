@@ -196,6 +196,7 @@ def load_data(
     bidirectional: bool = True,
     organism_embeddings_path: str | Path | None = None,
     organism_embedding_type: str = "mds",
+    protein_embeddings_path: str | Path | None = None,
     split_type: str = "taxa",
     species_pool: bool = False,
     download: bool = True,
@@ -248,6 +249,9 @@ def load_data(
     organism_embeddings_path : path to embeddings_organism.pt. Replaces the
         random 64-dim Organism features with taxonomy-aware MDS coordinates.
     organism_embedding_type : "mds" (64-dim) or "multihot" (702-dim lineage).
+    protein_embeddings_path : path to an alternate protein embeddings .pt file
+        ({node_id: tensor}, any dimension -- inferred at model build time).
+        Defaults to data_dir/embeddings_protein.pt when not given.
     species_pool : if True and split_type is "ath_pathway", restrict the
         ranking pool to A. thaliana proteins only (5,289 proteins with ESM-C,
         random P-H@50≈0.95%).  Ignored for other split types.
@@ -297,7 +301,7 @@ def load_data(
               f"taxonomy {organism_embedding_type} ({new_dim}-dim)")
 
     # ── Protein embeddings (load from embeddings_protein.pt if present) ───────
-    prot_emb_path = data_dir / "embeddings_protein.pt"
+    prot_emb_path = Path(protein_embeddings_path) if protein_embeddings_path else data_dir / "embeddings_protein.pt"
     if prot_emb_path.exists():
         prot_emb: dict[str, torch.Tensor] = torch.load(prot_emb_path, weights_only=False)
         emb_dim  = next(iter(prot_emb.values())).shape[0]

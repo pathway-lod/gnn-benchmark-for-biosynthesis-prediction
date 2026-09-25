@@ -71,6 +71,8 @@ def load_plantmet(
     data_dir: str | Path,
     split_file: str = "splits_taxa.pt",
     deduplicate: bool = True,
+    species_pool: bool = False,
+    protein_embeddings_path: str | Path | None = None,
     verbose: bool = True,
 ) -> RetrievalData:
     """Build a :class:`RetrievalData` from a PlantMetBench release directory.
@@ -80,6 +82,13 @@ def load_plantmet(
         split_file: Which split definition to load, e.g. ``splits_taxa.pt``.
         deduplicate: Collapse proteins sharing an identical ESM vector into one
             retrieval candidate (see the module docstring).
+        species_pool: Restrict the retrieval pool to ``split_file``'s
+            ``ath_protein_idxs`` (only meaningful for ``splits_ath_pathway.pt``,
+            mirroring ``dataset.load_data(..., species_pool=True)`` in the main
+            GNN pipeline). Raises if the split file has no such field.
+        protein_embeddings_path: Path to an alternate protein embeddings .pt
+            file ({node_id: tensor}, any dimension). Defaults to
+            data_dir/embeddings_protein.pt when not given.
         verbose: Print pool sizes and per-split drop counts.
     """
     data_dir = Path(data_dir)
@@ -90,9 +99,22 @@ def load_plantmet(
     node_proteins = nodes.loc[nodes["node_type"] == "Protein", "node_id"].tolist()
     node_reactions = nodes.loc[nodes["node_type"] == "Interaction", "node_id"].tolist()
 
+    splits_raw = torch.load(data_dir / split_file, map_location="cpu", weights_only=False)
+
     # Candidate proteins: everything carrying an ESM embedding, in node-table order.
-    protein_emb = torch.load(data_dir / "embeddings_protein.pt", map_location="cpu", weights_only=False)
-    embedded_ids = [p for p in node_proteins if p in protein_emb]
+    prot_emb_path = Path(protein_embeddings_path) if protein_embeddings_path else data_dir / "embeddings_protein.pt"
+    protein_emb = torch.load(prot_emb_path, map_location="cpu", weights_only=False)
+    if species_pool:
+        if "ath_protein_idxs" not in splits_raw:
+            raise ValueError(
+                f"species_pool=True but {split_file} has no ath_protein_idxs field"
+            )
+        allowed = set(splits_raw["ath_protein_idxs"].tolist())
+        embedded_ids = [p for i, p in enumerate(node_proteins)
+                         if p in protein_emb and i in allowed]
+        _log(f"  species pool : restricted to {len(allowed):,} A. thaliana protein indices")
+    else:
+        embedded_ids = [p for p in node_proteins if p in protein_emb]
     embedded_x = torch.stack([protein_emb[p].float() for p in embedded_ids])
     _log(f"  embedded prot: {len(embedded_ids):,} / {len(node_proteins):,} nodes have ESM embeddings")
 
@@ -105,10 +127,9 @@ def load_plantmet(
     reaction_emb = torch.load(data_dir / "embeddings_conversion.pt", map_location="cpu", weights_only=False)
     _log(f"  DRFP table   : {len(reaction_emb):,} reactions")
 
-    _check_dim(protein_x.shape[1], PROT_DIM, "protein")
+    if protein_embeddings_path is None:
+        _check_dim(protein_x.shape[1], PROT_DIM, "protein")
     _check_dim(next(iter(reaction_emb.values())).shape[-1], DRFP_DIM, "reaction")
-
-    splits_raw = torch.load(data_dir / split_file, map_location="cpu", weights_only=False)
 
     # Index reactions lazily so the reaction table holds only what the splits use.
     reaction_ids: list[str] = []

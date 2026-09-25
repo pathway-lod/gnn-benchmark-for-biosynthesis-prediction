@@ -308,22 +308,12 @@ plantmetbench/
 
 ## Data
 
-The dataset is derived from [PlantMetWiki](https://plantmetwiki.net), a curated knowledge graph
-of plant metabolic pathways integrating WikiPathways-Plants, PlantCyc, and AraCyc.
+The dataset is derived from PlantMetWiki (2026,
+[doi:10.64898/2026.07.22.733699](https://doi.org/10.64898/2026.07.22.733699)), a FAIR knowledge graph
+of plant metabolic pathways built from PlantCyc, i.e. the Plant Metabolic Network
+(Hawkins et al., 2025, *Nucleic Acids Research* 53(D1):D1606–D1613,
+[doi:10.1093/nar/gkae991](https://doi.org/10.1093/nar/gkae991)).
 
 **Zenodo:**
 - Full dataset (graph + splits + embeddings): [10.5281/zenodo.20847651](https://doi.org/10.5281/zenodo.20847651)
 - Embedding inputs (sequences, SMILES, EC numbers): [10.5281/zenodo.21237830](https://doi.org/10.5281/zenodo.21237830)
-
----
-
-## How to cite
-
-```bibtex
-@inproceedings{plantmetbench2026,
-  title     = {PlantMetBench: A Multimodal Knowledge Graph Benchmark for Plant Biosynthesis Prediction},
-  author    = {Anonymous},
-  booktitle = {NeurIPS 2026 Workshop},
-  year      = {2026},
-}
-```
