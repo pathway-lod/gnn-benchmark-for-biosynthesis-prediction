@@ -66,6 +66,10 @@ def get_args() -> argparse.Namespace:
     ap.add_argument("--disjoint-train-ratio", type=float, default=0.2,
                     help="Fraction of train positives withheld from MP graph (default 0.2). "
                          "Set to 0 to disable (re-introduces 1-hop shortcut).")
+    ap.add_argument("--train-frac", type=float, default=1.0,
+                    help="Fraction of taxa-split training positives to keep (default 1.0). "
+                         "Val/test are untouched. Use <1.0 to build a data-scaling learning "
+                         "curve (see train_frac_ablation.py).")
     ap.add_argument("--keep-pathways", dest="keep_pathways", action="store_true", default=False,
                     help="Keep is_part_of Pathway edges in the MP graph (re-introduces co-membership shortcut).")
     ap.add_argument("--keep-catalyzed-by", dest="keep_catalyzed_by", action="store_true", default=False,

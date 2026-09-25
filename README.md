@@ -271,7 +271,10 @@ plantmetbench/
 │   ├── utils.py               ← negative sampling, seed setting
 │   ├── report.py              ← JSON report + TeeLogger
 │   ├── train.py               ← single-seed training
-│   └── train_seeds.py         ← multi-seed run → mean ± std
+│   ├── train_seeds.py         ← multi-seed run → mean ± std
+│   ├── train_frac_ablation.py ← data-scaling ablation (--train-frac)
+│   ├── plot_hidden_dim_ablation.py
+│   └── plot_model_scatter.py
 │
 ├── dual_encoder/              ← contrastive retrieval baseline (no graph library needed)
 │   ├── README.md              ← method, hyperparameters, results, comparability note

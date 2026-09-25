@@ -186,6 +186,7 @@ def load_data(
     remove_is_part_of: bool = True,
     embedded_only_ranking: bool = True,
     disjoint_train_ratio: float = 0.2,
+    train_frac: float = 1.0,
     keep_catalyzed_by: bool = False,
     remove_currency_metabolites: bool = False,
     remove_all_metabolites: bool = False,
@@ -218,6 +219,12 @@ def load_data(
         ESM embeddings (~8,445 of ~13,682). Recommended: True.
     disjoint_train_ratio : fraction of training positives held out from the MP
         graph (supervision-only). Default 0.2 prevents the 1-hop shortcut.
+    train_frac : fraction of the taxa-split training positives to keep (default
+        1.0 = all of them). Subsampled once, before the disjoint MP/supervision
+        split, so both the message-passing graph and the supervision edges
+        shrink together. Val/test are never touched. Use this to build a
+        data-scaling learning curve — if val/test performance is still rising
+        as train_frac -> 1.0, the model has not saturated on the available data.
     keep_catalyzed_by : if True, add (Interaction, catalyzed_by, Protein) reverse
         edge to the MP graph. Default False — this creates a 2-hop shortcut.
     remove_currency_metabolites : remove edges involving ATP, ADP, H2O, NAD+,
@@ -440,6 +447,13 @@ def load_data(
         for s, d in zip(ei[0].tolist(), ei[1].tolist())
     }
     rng = np.random.default_rng(random_seed)
+
+    if train_frac < 1.0:
+        n_train_full = pos_ei["train"].shape[1]
+        n_keep = int(round(n_train_full * train_frac))
+        perm_frac = torch.randperm(n_train_full, generator=torch.Generator().manual_seed(random_seed))
+        pos_ei["train"] = pos_ei["train"][:, perm_frac[:n_keep]]
+        print(f"  train_frac={train_frac}: using {n_keep:,}/{n_train_full:,} training positives")
 
     _inter_ids    = nodes_df.loc[nodes_df["node_type"] == "Interaction", "node_id"].tolist()
     _inter_id2idx = {nid: i for i, nid in enumerate(_inter_ids)}

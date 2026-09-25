@@ -192,6 +192,7 @@ def load_ctx_for_run(hp: dict, data_dir, **overrides) -> GraphContext:
         remove_is_part_of=not hp.get("keep_pathways", False),
         embedded_only_ranking=True,
         disjoint_train_ratio=hp.get("disjoint_train_ratio", 0.2),
+        train_frac=hp.get("train_frac", 1.0),
         keep_catalyzed_by=hp.get("keep_catalyzed_by", False),
         load_ec_embeddings=hp.get("ec_features", False),
         remove_currency_metabolites=hp.get("remove_currency_metabolites", False),

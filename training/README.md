@@ -95,6 +95,9 @@ the true (Protein, Reaction) pair from a random-protein pair for the same reacti
 | `report.py` | `TeeLogger` (stdout → file), `save_report` (JSON) |
 | `train.py` | Single-seed training loop |
 | `train_seeds.py` | Multi-seed wrapper: runs 5 seeds, saves `seeds_summary.json` |
+| `train_frac_ablation.py` | Data-scaling ablation: trains on increasing fractions of the training positives (`--train-frac`) and plots val/test P-H@50 and CP-AUC |
+| `plot_hidden_dim_ablation.py` | Bar chart of test P-H@K across hidden dimensions for HeteroSAGE+Res&Jump |
+| `plot_model_scatter.py` | Scatter of test P-H@50 vs. best epoch, with marker size proportional to the parameter count |
 
 ## All CLI flags
 
