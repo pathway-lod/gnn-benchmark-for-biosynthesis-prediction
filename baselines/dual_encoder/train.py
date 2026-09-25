@@ -31,7 +31,7 @@ from losses import FullBatchMLNCELoss
 from metrics import encode_all, retrieval_metrics
 from model import DualEncoder, cosine_distances
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 REPORTED_METRICS = ("P-H@10", "P-H@50", "cp_auc", "cp_ap")
 METRIC_LABELS = {"P-H@10": "P-H@10", "P-H@50": "P-H@50", "cp_auc": "CP-AUC", "cp_ap": "CP-AP"}
 

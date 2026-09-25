@@ -41,7 +41,7 @@ conda activate plantmetbench-data
 ```
 
 Use this to explore the graph, re-run EDA notebooks, or recompute the conversion/organism
-embeddings from Zenodo inputs. See [data_preparation/README.md](data_preparation/README.md).
+embeddings from Zenodo inputs. See [notebooks/README.md](notebooks/README.md) and [data_preparation/README.md](data_preparation/README.md).
 
 > **Note:** protein embeddings (ESM-C), gene embeddings (PlantCaduceus), metabolite fingerprints
 > (MAP4), and EC one-hot embeddings are computed in the upstream pipeline and provided as
@@ -167,16 +167,16 @@ Key flags:
 
 ## Dual-encoder baseline
 
-A second standalone baseline lives in `dual_encoder/`. It requires only `torch`,
+A second standalone baseline lives in `baselines/dual_encoder/`. It requires only `torch`,
 `numpy`, and `pandas` — no graph library — and can run on a laptop CPU.
 
 ```bash
-cd dual_encoder/
+cd baselines/dual_encoder/
 pip install -r requirements.txt
 python train.py          # 5 seeds, 200 epochs; writes results/results.json
 ```
 
-See [dual_encoder/README.md](dual_encoder/README.md) for the method, hyperparameters,
+See [baselines/dual_encoder/README.md](baselines/dual_encoder/README.md) for the method, hyperparameters,
 and a discussion of the pool-size difference relative to the GNN baselines.
 
 > **Pool-size comparability.** The dual encoder's default evaluation uses **2,232
@@ -187,7 +187,7 @@ and a discussion of the pool-size difference relative to the GNN baselines.
 To evaluate on the 8,445-protein pool:
 
 ```bash
-cd dual_encoder/
+cd baselines/dual_encoder/
 python train.py --seeds 42 0 1 2 3 --model_selection P-H@50 --num_layers 2 \
   --keep_duplicates \
   --checkpoint_dir checkpoints_fullpool \
@@ -196,7 +196,7 @@ python train.py --seeds 42 0 1 2 3 --model_selection P-H@50 --num_layers 2 \
 
 Use `--num_layers` 1 or 3 for the other depths. Checkpoints and
 results for the default (2,232-pool) runs shown in
-[dual_encoder/README.md](dual_encoder/README.md) omit `--keep_duplicates`.
+[baselines/dual_encoder/README.md](baselines/dual_encoder/README.md) omit `--keep_duplicates`.
 
 ---
 
@@ -207,16 +207,16 @@ protein is scored by its best BLASTp bitscore against any training-set
 catalyst of that reaction, then ranked. Method follows ReactZyme (Hua et al.,
 2024), adapted for the reverse (reaction → protein) direction.
 
-BLAST hits are precomputed and shipped in `blast/blast_results.tsv`, so
+BLAST hits are precomputed and shipped in `baselines/blast/blast_results.tsv`, so
 reproducing the reported numbers needs only the standard data release —
 no local BLAST+ installation required. Complete
 [Step 0](#step-0--install-and-download-data) first (environment + data
 download), then from the repo root:
 
 ```bash
-python blast/blast_evaluate.py                # test split, 8,445-protein pool
-python blast/blast_evaluate.py --split val     # validation split
-python blast/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
+python baselines/blast/blast_evaluate.py                # test split, 8,445-protein pool
+python baselines/blast/blast_evaluate.py --split val     # validation split
+python baselines/blast/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
 ```
 
 Regenerating `blast_results.tsv` from raw sequences requires a local
@@ -224,23 +224,51 @@ Regenerating `blast_results.tsv` from raw sequences requires a local
 
 ---
 
+## Commands at a glance
+
+`make help` lists the same targets. Each one is a thin wrapper, so `make -n <target>` shows the exact command.
+
+| What | Command | Output |
+|---|---|---|
+| Download the dataset | `make data` | `data/` |
+| One baseline run (seed 42) | `make baseline` | `runs/baseline/` |
+| Baseline, 5 seeds | `make seeds` | `runs/baseline/`, `results/baseline/` |
+| Another model, 5 seeds | `make model GNN=residual_jumping_sage LAYERS=2 RUN=resjump` | `runs/resjump/`, `results/resjump/` |
+| Shortcut ablations | `make ablations` | `results/ablations.json` |
+| EC class distribution | `make ec-distribution` | `results/ec_distribution.json` |
+| Data-scaling ablation | `make train-frac` | `runs/frac-ablation/` |
+| *A. thaliana* reaction holdout | `make ath-splits`, then `make ath` | `runs/ath_baseline/`, `results/ath_baseline/` |
+| Dual encoder (2,232-protein pool) | `make dual-encoder` | `baselines/dual_encoder/results/` |
+| Dual encoder (8,445-protein pool) | `make dual-encoder-fullpool` | `baselines/dual_encoder/results/` |
+| Dual encoder L1-L3, deduplicated pool | `make dual-encoder-dedup` | `results/dual_encoder/` |
+| BLASTp baseline | `make blast` (`make blast-dedup` for the 2,232 pool) | printed |
+| Appendix tables from `results/` | `make tables` | printed |
+
+Model names for `GNN=` are `sage`, `residual_sage`, `residual_jumping_sage` (HeteroSAGE+Res&Jump), `hgt`, `gat`, `rgcn` and `mix`.
+
+---
+
 ## Repository structure
 
 ```
 plantmetbench/
+├── Makefile                   ← entry points for the experiments (`make help`)
 ├── environment_training.yml   ← install this for all GNN experiments
 ├── environment_data_prep.yml  ← install this for data prep notebooks only
 │
 ├── data/                      ← downloaded automatically (gitignored)
 │   └── README.md              ← Zenodo download instructions
 │
-├── data_preparation/          ← graph construction, EDA, and embedding notebooks
+├── notebooks/                 ← demonstration notebooks: graph, splits, embeddings, baseline, projections
 │   ├── README.md
 │   ├── 01_explore_graph.ipynb
 │   ├── 02_build_splits.ipynb
 │   ├── 03_embeddings_fulldata.ipynb
 │   ├── 04_link_prediction.ipynb
-│   ├── 05_embedding_exploration.ipynb
+│   └── 05_embedding_exploration.ipynb
+│
+├── data_preparation/          ← scripts that recompute embedding files from raw inputs
+│   ├── README.md
 │   └── scripts/
 │       ├── compute_conversion_embeddings.py   ← recompute reaction fingerprints
 │       ├── compute_ec_embeddings.py           ← recompute EC one-hot (upstream only)
@@ -260,20 +288,20 @@ plantmetbench/
 │   ├── plot_hidden_dim_ablation.py
 │   └── plot_model_scatter.py
 │
-├── dual_encoder/              ← contrastive retrieval baseline (no graph library needed)
-│   ├── README.md              ← method, hyperparameters, results, comparability note
-│   ├── requirements.txt       ← torch, numpy, pandas only
-│   ├── model.py               ← MLPEncoder + DualEncoder
-│   ├── losses.py              ← full-batch MLNCE loss
-│   ├── data.py                ← benchmark loading, split remapping
-│   ├── metrics.py             ← P-H@K, CP-AUC/AP
-│   ├── eval_anyp.py           ← any-catalyst P-H@K evaluation
-│   ├── run_dedup.sh           ← runs L1-L3 on the 2,232-protein deduplicated pool
-│   └── train.py               ← per-seed training loop + CLI
-│
-├── blast/                     ← BLASTp baseline (self-contained)
-│   ├── blast_evaluate.py      ← evaluates the precomputed hits on the benchmark splits
-│   └── blast_results.tsv      ← precomputed hits (query, subject, bitscore); tracked in git
+├── baselines/                 ← non-graph baselines
+│   ├── dual_encoder/          ← contrastive retrieval baseline (no graph library needed)
+│   │   ├── README.md          ← method, hyperparameters, comparability note
+│   │   ├── requirements.txt   ← torch, numpy, pandas only
+│   │   ├── model.py           ← MLPEncoder + DualEncoder
+│   │   ├── losses.py          ← full-batch MLNCE loss
+│   │   ├── data.py            ← benchmark loading, split remapping
+│   │   ├── metrics.py         ← P-H@K, CP-AUC/AP
+│   │   ├── eval_anyp.py       ← any-catalyst P-H@K evaluation
+│   │   ├── run_dedup.sh       ← L1-L3 on the 2,232-protein deduplicated pool
+│   │   └── train.py           ← per-seed training loop + CLI
+│   └── blast/                 ← BLASTp baseline (self-contained)
+│       ├── blast_evaluate.py  ← evaluates the precomputed hits on the benchmark splits
+│       └── blast_results.tsv  ← precomputed hits (query, subject, bitscore); tracked in git
 │
 ├── scripts/                   ← analysis, result-generation and plotting scripts
 │   ├── run_ablations.py             ← shortcut ablations → results/ablations.json

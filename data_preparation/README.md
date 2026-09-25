@@ -1,36 +1,12 @@
 # Data Preparation
 
-This folder contains notebooks and scripts for building and exploring the
-PlantMetBench dataset from raw PlantMetWiki RDF data.
+This folder contains the scripts that recompute the embedding files of the
+PlantMetBench dataset from raw inputs. The notebooks are in [../notebooks/](../notebooks/).
 
 > **Note for reproducers**: The fully processed dataset (graph, splits, and
 > embeddings) is available on Zenodo — see [data/README.md](../data/README.md).
-> You only need to run these notebooks if you want to reproduce the data
+> You only need to run these scripts if you want to reproduce the data
 > construction pipeline from scratch.
-
-## Notebooks
-
-Run the notebooks in order from the repo root (or adjust paths as needed):
-
-| Notebook | Description |
-|----------|-------------|
-| [01_explore_graph.ipynb](01_explore_graph.ipynb) | Load and explore the raw PlantMetWiki RDF graph: node/edge type distributions, organism coverage, pathway statistics |
-| [02_build_splits.ipynb](02_build_splits.ipynb) | Construct the random and pathway-holdout splits (the taxa holdout is built in notebook 03) |
-| [03_embeddings_fulldata.ipynb](03_embeddings_fulldata.ipynb) | Inspect and validate the pre-computed node embeddings (ESM-C proteins, MAP4 metabolites, PlantCaduceus genes): coverage by node type, namespace and organism, and the embedding-aware taxa split |
-| [04_link_prediction.ipynb](04_link_prediction.ipynb) | Demonstration of the baseline: load the data with `training/dataset.py`, the shortcut controls, and training and evaluating a HeteroSAGE model as in `training/train.py` (not the reported results) |
-| [05_embedding_exploration.ipynb](05_embedding_exploration.ipynb) | Visualise conversion (reaction) fingerprints: PCA / t-SNE / UMAP projections coloured by EC class |
-
-### Running the notebooks
-
-```bash
-conda activate plantmetbench
-cd data_preparation/
-jupyter lab
-```
-
-> **Path note**: notebooks were originally developed from the project root and
-> reference paths like `../data/`. You may need to adjust these if running from
-> inside `data_preparation/`.
 
 ## Embedding computation scripts
 

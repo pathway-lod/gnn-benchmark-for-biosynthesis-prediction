@@ -6,15 +6,15 @@
 # Runs the dual encoder with L1, L2 and L3 on the 2,232-protein deduplicated pool.
 #
 # Run from repo root:
-#   bash dual_encoder/run_dedup.sh
+#   bash baselines/dual_encoder/run_dedup.sh
 #
 # Results land in results/dual_encoder/:
 #   L1_dedup_ph50.json  L2_dedup_ph50.json  L3_dedup_ph50.json
 
 set -euo pipefail
 
-PYTHON=${PYTHON:-python}   # override: PYTHON=/path/to/env/bin/python bash dual_encoder/run_dedup.sh
-TRAIN=dual_encoder/train.py
+PYTHON=${PYTHON:-python}   # override: PYTHON=/path/to/env/bin/python bash baselines/dual_encoder/run_dedup.sh
+TRAIN=baselines/dual_encoder/train.py
 RESULTS=results/dual_encoder
 COMMON="--seeds 42 0 1 2 3 --model_selection P-H@50"
 
@@ -57,7 +57,7 @@ echo " BLASTp — 2,232 pool"
 echo "=============================="
 echo ""
 echo "Run from repo root:"
-echo "  python blast/blast_evaluate.py --dedup-pool"
+echo "  python baselines/blast/blast_evaluate.py --dedup-pool"
 echo "(BLASTp results are deterministic; output is printed to stdout.)"
 echo ""
 echo "All done."

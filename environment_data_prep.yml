@@ -1,7 +1,7 @@
 name: plantmetbench-data
 # Environment for running data preparation notebooks and embedding scripts.
 # You only need this if you want to:
-#   - Re-run the EDA / exploration notebooks (data_preparation/*.ipynb)
+#   - Re-run the EDA / exploration notebooks (notebooks/*.ipynb)
 #   - Recompute conversion fingerprints from downloaded MAP4 metabolite embeddings
 #     (data_preparation/scripts/compute_conversion_embeddings.py)
 #   - Recompute organism taxonomy embeddings from NCBI

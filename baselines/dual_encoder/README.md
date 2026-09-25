@@ -79,7 +79,7 @@ python train.py --data_dir /path/to/plantmetbench   # release directory elsewher
 python train.py --seeds 42 --epochs 50              # quick single-seed check
 ```
 
-By default `--data_dir` points at `../data`. Each seed trains independently; the
+By default `--data_dir` points at `../../data`. Each seed trains independently; the
 checkpoint with the best validation P-H@50 is the one evaluated on test. Per-seed
 metrics and the aggregate land in `results/results.json`, checkpoints in
 `checkpoints/dual_encoder_seed<N>.pt`.

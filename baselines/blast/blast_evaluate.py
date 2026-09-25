@@ -13,16 +13,16 @@ ranking pool = 8,445 non-zero ESM-C proteins).
 Method follows ReactZyme (Hua et al., 2024): reaction-conditioned sequence
 retrieval, adapted for the reverse task direction (given reaction, rank proteins).
 
-BLAST hits (blast/blast_results.tsv) are precomputed and shipped with this
+BLAST hits (baselines/blast/blast_results.tsv) are precomputed and shipped with this
 repo, so this script only needs the standard PlantMetBench data release —
 no local BLAST+ installation is required to reproduce the reported numbers.
 Regenerating blast_results.tsv from raw sequences requires a local `blastp`/
 `makeblastdb` install and is outside the scope of this script.
 
 Run from repo root:
-    python blast/blast_evaluate.py
-    python blast/blast_evaluate.py --split val     # validation split
-    python blast/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
+    python baselines/blast/blast_evaluate.py
+    python baselines/blast/blast_evaluate.py --split val     # validation split
+    python baselines/blast/blast_evaluate.py --dedup-pool    # 2,232 deduplicated pool
 """
 import argparse
 import json
@@ -33,9 +33,9 @@ import numpy as np
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DATA = ROOT / "data"
-BLAST_DIR = ROOT / "blast"
+BLAST_DIR = Path(__file__).resolve().parent
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--split", choices=["val", "test"], default="test")
