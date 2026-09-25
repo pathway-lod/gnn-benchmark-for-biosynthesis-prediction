@@ -1,7 +1,10 @@
 data/*
 !data/README.md
 runs/
-# results/ JSON files are tracked (shared reproducibility outputs)
+# generated result files and checkpoints are not tracked; results/README.md lists the command behind each paper table
+results/*
+!results/README.md
+checkpoints*/
 runs_/
 runs_clean/
 runs_initial/

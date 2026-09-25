@@ -2,6 +2,7 @@
 
 This directory collects machine-generated result files referenced in the paper appendix.
 Each JSON file is produced by a specific script; run the scripts below to regenerate them.
+The generated files are not tracked in git (`results/*` is ignored except this README).
 
 ---
 

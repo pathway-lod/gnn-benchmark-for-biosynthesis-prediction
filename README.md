@@ -294,7 +294,7 @@ plantmetbench/
 ├── blast/                     ← BLASTp baseline data
 │   └── blast_results.tsv      ← precomputed hits (query, subject, bitscore); tracked in git
 │
-└── results/                   ← machine-generated result files (tracked in git)
+└── results/                   ← generated result files (not tracked; see results/README.md)
     ├── README.md              ← what each file is and how to regenerate it
     ├── ec_distribution.json
     ├── ablations.json
