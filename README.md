@@ -4,6 +4,8 @@
 
 # PlantMetBench
 
+[![DOI](https://zenodo.org/badge/1407472424.svg)](https://doi.org/10.5281/zenodo.23207246)
+
 A graph machine learning benchmark for enzyme–reaction link prediction in plant metabolism.
 
 **Task:** given a biochemical reaction from PlantMetWiki, identify which plant protein (enzyme) catalyses it.
