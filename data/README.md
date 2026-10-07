@@ -14,7 +14,7 @@ python train.py          # downloads data/ automatically on first run
 
 | Record | Contents | DOI |
 |--------|----------|-----|
-| PlantMetBench full dataset | `heterodata.pt`, `splits_taxa.pt`, `nodes.tsv`, `edges.tsv`, embeddings | [10.5281/zenodo.20847651](https://doi.org/10.5281/zenodo.20847651) |
+| PlantMetBench full dataset | `heterodata.pt`, `splits_taxa.pt`, `nodes.tsv`, `edges.tsv`, embeddings | [10.5281/zenodo.21217732](https://doi.org/10.5281/zenodo.21217732) |
 | Embedding inputs | Protein sequences, gene sequences, metabolite SMILES/InChIKeys, conversion EC numbers, organism NCBI IDs | [10.5281/zenodo.21237830](https://doi.org/10.5281/zenodo.21237830) |
 
 After downloading, place all files directly in this `data/` directory.

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/logo.png" alt="PlantMetBench logo" width="200">
+</p>
+
 # PlantMetBench
 
 A graph machine learning benchmark for enzyme–reaction link prediction in plant metabolism.
@@ -331,7 +335,7 @@ of plant metabolic pathways built from PlantCyc, i.e. the Plant Metabolic Networ
 [doi:10.1093/nar/gkae991](https://doi.org/10.1093/nar/gkae991)).
 
 **Zenodo:**
-- Full dataset (graph + splits + embeddings): [10.5281/zenodo.20847651](https://doi.org/10.5281/zenodo.20847651)
+- Full dataset (graph + splits + embeddings): [10.5281/zenodo.21217732](https://doi.org/10.5281/zenodo.21217732)
 - Embedding inputs (sequences, SMILES, EC numbers): [10.5281/zenodo.21237830](https://doi.org/10.5281/zenodo.21237830)
 
 ---
